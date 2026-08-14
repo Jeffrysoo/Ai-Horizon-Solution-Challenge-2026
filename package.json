@@ -1,0 +1,10 @@
+{
+  "name": "dispenseiq",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Dispensing Defect Detective — AI Horizon Solution Challenge 2026",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  }
+}

@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/industry-9468f3d7-d30f-4898-9341-9a334ec1abb2/styles.css">
+  <script src="_ds/industry-9468f3d7-d30f-4898-9341-9a334ec1abb2/_ds_bundle.js"></script>
+  <script src="./image-slot.js"></script>
+  <style>
+    html, body { margin: 0; padding: 0; background: var(--color-bg); }
+    a { color: var(--color-accent-700); }
+    a:hover { color: var(--color-accent-900); }
+    @keyframes diqScan { 0% { left: -30%; } 100% { left: 100%; } }
+    @media print {
+      [data-noprint] { display: none !important; }
+      body { background: #fff; }
+    }
+    /* Softened component shapes (user direction): pills + rounded surfaces */
+    .btn { border-radius: 999px; }
+    .btn-primary { background: var(--color-neutral-900); border-color: var(--color-neutral-900); color: #fff; }
+    .btn-primary:hover { background: var(--color-neutral-800); border-color: var(--color-neutral-800); }
+    .btn-primary:active { background: var(--color-neutral-700); }
+    .btn-secondary { background: #fff; }
+    .tag { border-radius: 999px; background: #fff; }
+    .tag-accent { background: var(--color-accent-100); }
+    .card { border-radius: 16px; background: #fff; box-shadow: var(--shadow-sm); }
+    .input { border-radius: 12px; background: #fff; }
+    .blueprint > .corner { display: none; }
+  </style>
+</helmet>
+<div style="min-height: 100vh; font-family: var(--font-body); color: var(--color-text); display: flex; flex-direction: column;">
+  <header class="nav" data-noprint="true" style="display: flex; align-items: center; gap: var(--space-6); padding: var(--space-3) var(--space-6); border-bottom: 1px solid var(--color-divider);">
+    <a href="#" onClick="{{ goHome }}" class="nav-brand" style="display: flex; align-items: center; gap: var(--space-2); text-decoration: none; color: var(--color-text); font-family: var(--font-heading); font-weight: 600; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-600)" stroke-width="1.5" stroke-linecap="round"><rect x="5" y="5" width="14" height="14"></rect><path d="M12 2v6"></path><path d="M12 16v6"></path><path d="M2 12h6"></path><path d="M16 12h6"></path></svg>
+      <span>Dispense<span style="color: var(--color-accent-700);">IQ</span></span>
+    </a>
+    <div style="display: flex; align-items: center; gap: var(--space-4); margin: 0 auto;">
+      <sc-for list="{{ navSteps }}" as="st" hint-placeholder-count="4">
+        <a href="#" onClick="{{ st.go }}" style="display: flex; align-items: baseline; gap: 6px; text-decoration: none; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {{ st.color }}; cursor: pointer; border: 1px solid var(--color-divider); background: #fff; border-radius: 999px; padding: var(--space-2) var(--space-4);" style-hover="background: var(--color-accent-100);">
+          <span style="font-family: var(--font-heading); font-weight: 600;">{{ st.n }}</span>
+          <span style="border-bottom: {{ st.u }}; padding-bottom: 2px;">{{ st.label }}</span>
+        </a>
+      </sc-for>
+    </div>
+    <a href="#" onClick="{{ goHistory }}" style="display: flex; align-items: center; gap: 6px; font-size: 13px; text-decoration: none; border: 1px solid var(--color-divider); padding: var(--space-2) var(--space-4); white-space: nowrap; flex-shrink: 0; border-radius: 999px; background: var(--color-neutral-200); color: var(--color-text); text-decoration: none;" style-hover="background: var(--color-accent-100);">
+      <span style="width: 5px; height: 5px; border-radius: 50%; background: var(--color-accent-600); display: inline-block;"></span>
+      Case history
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"></path><path d="M7 17 17 7"></path></svg>
+    </a>
+  </header>
+
+  <sc-if value="{{ isLanding }}" hint-placeholder-val="{{ true }}">
+    <main data-screen-label="Landing" style="flex: 1; display: flex; flex-direction: column;">
+      <div class="blueprint" style="position: relative; margin: var(--space-6) var(--space-8) 0; border: 1px solid var(--color-divider); border-radius: 20px; overflow: hidden;">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="duotone" style="position: absolute; inset: 0;">
+          <image-slot id="landing-hero" shape="rect" placeholder="Drop a photo of your dispensing line" style="width: 100%; height: 100%;"></image-slot>
+        </div>
+        <div style="position: absolute; inset: 0; background: linear-gradient(180deg, var(--color-bg) 4%, color-mix(in srgb, var(--color-bg) 70%, transparent) 55%, transparent 92%); pointer-events: none;"></div>
+        <div style="position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-6); padding: 56px var(--space-6) 110px; min-height: 420px; pointer-events: none;">
+        <h1 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: clamp(56px, 8.5vw, 104px); line-height: 0.95; letter-spacing: 0.01em; text-transform: uppercase; max-width: 16ch;">Identify dispensing problems <span style="color: var(--color-accent-700);">faster with AI</span></h1>
+        <button type="button" class="btn btn-primary blueprint" style="white-space: nowrap; flex-shrink: 0; pointer-events: auto; box-shadow: var(--shadow-md); font-size: 17px; padding: var(--space-4) var(--space-8); margin-top: calc(-1 * var(--space-4));" onClick="{{ startDiagnosis }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Start new diagnosis<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+        </div>
+      </div>
+      <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-8); padding: var(--space-4) var(--space-8) 0;">
+        <span style="display: flex; align-items: center; gap: 8px; font-size: 13px; letter-spacing: 0.04em; white-space: nowrap;"><span style="width: 6px; height: 6px; background: var(--color-accent-600); display: inline-block;"></span>Dispensing line · dot inspection</span>
+        <p style="margin: 0; font-size: 15px; line-height: 1.55; color: var(--color-neutral-700); max-width: 40ch; text-align: left;">We define the symptom pattern before naming a cause — every ranking is scored against your answers, not a generic checklist.</p>
+      </div>
+      <div style="display: flex; align-items: center; margin: var(--space-6) 0 var(--space-8); border-top: 1px solid var(--color-divider); border-bottom: 1px solid var(--color-divider); padding: var(--space-2) 0;">
+        <sc-for list="{{ tickers }}" as="t" hint-placeholder-count="4">
+          <div style="flex: 1; height: 22px; background: repeating-linear-gradient(90deg, var(--color-neutral-400) 0, var(--color-neutral-400) 1px, transparent 1px, transparent 5px);"></div>
+          <span style="padding: 0 var(--space-3); font-family: var(--font-heading); font-weight: 600; font-size: 17px; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;">{{ t.t }}</span>
+        </sc-for>
+        <div style="flex: 1; height: 22px; background: repeating-linear-gradient(90deg, var(--color-neutral-400) 0, var(--color-neutral-400) 1px, transparent 1px, transparent 5px);"></div>
+      </div>
+      <div style="display: grid; grid-template-columns: 260px 1fr; gap: var(--space-8); padding: var(--space-6) var(--space-8) var(--space-8); align-items: start;">
+        <span class="tag tag-outline" style="white-space: nowrap; height: auto; justify-self: start;">About DispenseIQ</span>
+        <p style="margin: 0; font-size: 30px; line-height: 1.35; max-width: 34ch;">We start from your description of the defect, then narrow the symptom pattern with five smart questions. <strong>Every ranked cause comes with the reasoning behind it.</strong></p>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-8); padding: 0 var(--space-8) var(--space-8); align-items: start;">
+        <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: 52px; line-height: 1.05; letter-spacing: 0.01em; text-transform: uppercase;">Troubleshooting must be clear — <span style="color: var(--color-accent-700);">not costly</span></h2>
+        <div style="display: flex; flex-direction: column;">
+          <sc-for list="{{ flowCells }}" as="f" hint-placeholder-count="4">
+            <div style="display: grid; grid-template-columns: 64px 150px 1fr; gap: var(--space-4); align-items: baseline; border-top: 1px solid var(--color-divider); padding: var(--space-3) 0;">
+              <span style="font-size: 13px; color: var(--color-neutral-600);">({{ f.n }})</span>
+              <span style="font-family: var(--font-heading); font-weight: 600; font-size: 19px; letter-spacing: 0.05em; text-transform: uppercase;">{{ f.title }}</span>
+              <span style="font-size: 14px; line-height: 1.5; color: var(--color-neutral-700);">{{ f.body }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="background: var(--color-neutral-900); color: var(--color-neutral-200); padding: var(--space-8); display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); border-radius: 20px; margin: 0 var(--space-8) var(--space-8);">
+        <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <span style="display: flex; align-items: center; gap: 8px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-300);"><span style="width: 6px; height: 6px; background: var(--color-accent-300); display: inline-block;"></span>Ready when you are</span>
+          <span style="font-family: var(--font-heading); font-weight: 600; font-size: 40px; line-height: 1.1; letter-spacing: 0.01em; text-transform: uppercase; color: #fff; max-width: 22ch;">Start with a diagnosis — ranked causes, clear reasoning, printable report.</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-3); flex-shrink: 0;">
+          <button type="button" class="btn btn-primary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ startDiagnosis }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Start new diagnosis<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+          <a href="#" onClick="{{ goHistory }}" style="font-size: 13px; color: var(--color-accent-200);">View past cases →</a>
+        </div>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isInput }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Problem input" style="flex: 1; width: 720px; max-width: calc(100% - 48px); margin: 0 auto; padding: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-6);">
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Step 01 · Problem discovery</span>
+        <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: 40px; letter-spacing: 0.02em; text-transform: uppercase;">Describe the problem</h2>
+      </div>
+      <div class="field" style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <label for="diq-problem" style="font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">Describe the dispensing problem you're seeing</label>
+        <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material." value="{{ problem }}" onChange="{{ setProblem }}" style="resize: vertical; font-family: var(--font-body); font-size: 15px; line-height: 1.5;"></textarea>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <span style="font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase;">Photo of the dispensing result <span style="color: var(--color-neutral-500); text-transform: none; letter-spacing: 0;">(optional)</span></span>
+        <sc-if value="{{ noImage }}" hint-placeholder-val="{{ true }}">
+          <div onClick="{{ pickFile }}" onDragOver="{{ onDragOver }}" onDragLeave="{{ onDragLeave }}" onDrop="{{ onDrop }}" style="border: 1px dashed {{ dropBorder }}; background: {{ dropBg }}; padding: var(--space-8); display: flex; flex-direction: column; align-items: center; gap: var(--space-2); cursor: pointer; text-align: center; border-radius: 16px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-600)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"></path><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="m8 17 4-4 4 4"></path></svg>
+            <span style="font-size: 14px;">Drag a photo here, or <span style="color: var(--color-accent-700); text-decoration: underline;">browse files</span></span>
+            <span style="font-size: 12px; color: var(--color-neutral-600);">JPG or PNG · a top-down shot of the dispensed dots works best</span>
+          </div>
+        </sc-if>
+        <sc-if value="{{ hasImage }}" hint-placeholder-val="{{ false }}">
+          <div style="display: flex; align-items: center; gap: var(--space-4); border: 1px solid var(--color-divider); padding: var(--space-3); border-radius: 12px; background: #fff;">
+            <span class="duotone" style="display: block; width: 120px; height: 90px; border-radius: 8px;">{{ previewImg }}</span>
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1;">
+              <span style="font-size: 14px; font-weight: 600;">Image attached</span>
+              <span style="font-size: 12px; color: var(--color-neutral-600);">Will be analysed for dot size, shape and spread.</span>
+            </div>
+            <button type="button" class="btn btn-ghost" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ clearImage }}">Remove</button>
+          </div>
+        </sc-if>
+        <input type="file" accept="image/*" ref="{{ fileRef }}" onChange="{{ onFile }}" style="display: none;">
+      </div>
+      <div style="display: flex; gap: var(--space-3);">
+        <button type="button" class="btn btn-primary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ continueToQa }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Continue<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+        <button type="button" class="btn btn-ghost" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ goHome }}">Back</button>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isQa }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Q&A" style="flex: 1; width: 720px; max-width: calc(100% - 48px); margin: 0 auto; padding: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-6);">
+      <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+        <div style="display: flex; align-items: baseline; justify-content: space-between;">
+          <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Step 02 · Troubleshooting questions</span>
+          <span style="font-family: var(--font-heading); font-weight: 600; font-size: 18px; letter-spacing: 0.05em; text-transform: uppercase; white-space: nowrap;">Question {{ qNum }} of {{ qTotal }}</span>
+        </div>
+        <div style="display: flex; gap: var(--space-1);">
+          <sc-for list="{{ progressCells }}" as="c" hint-placeholder-count="5">
+            <div style="flex: 1; height: 4px; background: {{ c.bg }};"></div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <sc-for list="{{ chatLog }}" as="e" hint-placeholder-count="2">
+          <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+            <div style="align-self: flex-start; max-width: 80%; height: auto; box-sizing: border-box; border: 1px solid var(--color-divider); background: #fff; border-radius: 14px 14px 14px 4px; padding: var(--space-2) var(--space-3); font-size: 14px; line-height: 1.5; color: var(--color-neutral-700);">{{ e.q }}</div>
+            <span class="tag tag-accent" style="align-self: flex-end; height: auto; white-space: nowrap;">{{ e.a }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">DispenseIQ asks</div>
+        <div style="font-family: var(--font-heading); font-weight: 600; font-size: 26px; line-height: 1.2; letter-spacing: 0.02em;">{{ qText }}</div>
+        <div style="display: flex; flex-wrap: wrap; gap: var(--space-2);">
+          <sc-for list="{{ chips }}" as="chip" hint-placeholder-count="4">
+            <button type="button" class="btn btn-secondary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ chip.pick }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>{{ chip.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+          <span style="font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-neutral-500); white-space: nowrap;">or type an answer</span>
+          <input type="text" class="input" placeholder="Type here…" value="{{ textAnswer }}" onChange="{{ setTextAnswer }}" onKeyDown="{{ onAnswerKey }}" style="flex: 1;">
+          <button type="button" class="btn btn-primary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ submitText }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Answer</button>
+        </div>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isAnalyzing }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Analyzing" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4);">
+      <span style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600);">Comparing symptoms against known defect patterns</span>
+      <div style="font-family: var(--font-heading); font-weight: 600; font-size: 34px; letter-spacing: 0.04em; text-transform: uppercase;">Analyzing…</div>
+      <div style="width: 340px; height: 4px; border: 1px solid var(--color-divider); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: 0; bottom: 0; width: 30%; background: var(--color-accent-600); animation: diqScan 1.1s linear infinite;"></div>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isResults }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Analysis results" style="flex: 1; width: 1040px; max-width: calc(100% - 48px); margin: 0 auto; padding: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-4);">
+      <div style="display: flex; align-items: baseline; justify-content: space-between;">
+        <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: 40px; letter-spacing: 0.02em; text-transform: uppercase;">Analysis results</h2>
+        <span style="font-size: 13px; color: var(--color-neutral-600);">Case {{ caseId }} · {{ reportDate }}</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 5fr 3fr; gap: var(--space-4); align-items: start;">
+        <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-3);">
+          <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+          <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div class="card-kicker" style="margin: 0;">What's wrong · Identified defect</div>
+            <sc-if value="{{ isHighConf }}" hint-placeholder-val="{{ true }}">
+              <span class="tag" style="background: oklch(0.95 0.035 75); color: oklch(0.42 0.1 60); border: 1px solid oklch(0.75 0.09 65); white-space: nowrap; flex-shrink: 0;">High confidence</span>
+            </sc-if>
+            <sc-if value="{{ notHighConf }}" hint-placeholder-val="{{ false }}">
+              <span class="tag tag-neutral" style="white-space: nowrap; flex-shrink: 0;">{{ confLabel }}</span>
+            </sc-if>
+          </div>
+          <div style="font-family: var(--font-heading); font-weight: 600; font-size: 34px; line-height: 1.1; letter-spacing: 0.02em;">Inconsistent Dispensing Volume</div>
+          <div style="display: flex; align-items: center; gap: var(--space-2); font-size: 22px; letter-spacing: 2px;">
+            <span style="color: var(--color-accent-600);">{{ starsOn }}</span><span style="color: var(--color-neutral-400); margin-left: -8px;">{{ starsOff }}</span>
+            <span style="font-size: 13px; letter-spacing: 0; color: var(--color-neutral-600);">Confidence {{ confNum }} / 5</span>
+          </div>
+          <div style="border-top: 1px solid var(--color-divider); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);">
+            <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Matching symptoms</span>
+            <ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.4;">
+              <li>Some dispensing dots are larger than specified</li>
+              <li>Some dispensing dots are smaller than specified</li>
+              <li>Results are not repeatable shot to shot</li>
+              <li>Defect appears occasionally, not on every cycle</li>
+            </ul>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+          <sc-if value="{{ showSimilar }}" hint-placeholder-val="{{ true }}">
+            <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-2);">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div class="card-kicker">From case history</div>
+              <div style="display: flex; align-items: baseline; gap: var(--space-2);">
+                <span style="font-family: var(--font-heading); font-weight: 600; font-size: 44px; line-height: 1; color: var(--color-accent-700);">12×</span>
+                <span style="font-size: 13px; color: var(--color-neutral-600);">similar problems recorded</span>
+              </div>
+              <p style="margin: 0; font-size: 14px; line-height: 1.5;">In <strong>8 of 12</strong> previous cases the confirmed cause was air trapped inside the syringe.</p>
+              <a href="#" onClick="{{ goHistory }}" style="font-size: 13px;">View case history →</a>
+            </div>
+          </sc-if>
+          <sc-if value="{{ showQuality }}" hint-placeholder-val="{{ false }}">
+            <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-2);">
+              <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+              <div class="card-kicker">Dispensing quality assessment</div>
+              <sc-for list="{{ qualityRows }}" as="qr" hint-placeholder-count="4">
+                <div style="display: flex; align-items: baseline; justify-content: space-between; font-size: 13px;">
+                  <span>{{ qr.label }}</span>
+                  <span style="letter-spacing: 2px;"><span style="color: var(--color-accent-600);">{{ qr.on }}</span><span style="color: var(--color-neutral-400);">{{ qr.off }}</span></span>
+                </div>
+              </sc-for>
+              <div style="border-top: 1px solid var(--color-divider); padding-top: var(--space-2); display: flex; justify-content: space-between; font-size: 14px;">
+                <span style="letter-spacing: 0.06em; text-transform: uppercase;">Overall quality</span>
+                <strong style="font-family: var(--font-heading); font-size: 18px;">78 / 100</strong>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+      <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">Why · Ranked probable causes</div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+          <sc-for list="{{ causes }}" as="c" hint-placeholder-count="5">
+            <div style="display: grid; grid-template-columns: 220px 1fr 52px; align-items: center; gap: var(--space-3);">
+              <span style="font-size: 14px; font-weight: {{ c.weight }};">{{ c.name }}</span>
+              <div style="height: 14px; border: 1px solid var(--color-divider); position: relative; border-radius: 999px; background: #fff;">
+                <div style="position: absolute; inset: 2px auto 2px 2px; width: {{ c.w }}; background: {{ c.color }}; border-radius: 999px;"></div>
+              </div>
+              <span style="font-family: var(--font-heading); font-weight: 600; font-size: 17px; text-align: right;">{{ c.pct }}%</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="border: 1px solid oklch(0.75 0.09 65); background: oklch(0.97 0.02 80); padding: var(--space-3) var(--space-4); display: flex; gap: var(--space-3); border-radius: 12px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="oklch(0.5 0.11 60)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: oklch(0.42 0.1 60);">Why air bubble ranks highest</span>
+            <p style="margin: 0; font-size: 14px; line-height: 1.55;">{{ reasoning }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-3);">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div class="card-kicker">What to do next · Recommended action plan</div>
+        <div style="display: flex; flex-direction: column;">
+          <sc-for list="{{ plan }}" as="p" hint-placeholder-count="5">
+            <div onClick="{{ p.toggle }}" style="display: grid; grid-template-columns: 44px 24px 1fr; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-divider); cursor: pointer;" style-hover="background: var(--color-accent-100);">
+              <span style="font-family: var(--font-heading); font-weight: 600; font-size: 20px; color: var(--color-accent-600);">{{ p.n }}</span>
+              <span style="width: 18px; height: 18px; border: 1px solid var(--color-neutral-500); display: inline-flex; align-items: center; justify-content: center; background: {{ p.boxBg }}; border-radius: 6px;">
+                <sc-if value="{{ p.done }}" hint-placeholder-val="{{ false }}">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+                </sc-if>
+              </span>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <span style="font-size: 15px; font-weight: 600; text-decoration: {{ p.deco }};">{{ p.title }}</span>
+                <span style="font-size: 13px; color: var(--color-neutral-600);">{{ p.detail }}</span>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: var(--space-3); margin-top: var(--space-1);">
+          <button type="button" class="btn btn-primary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ toReport }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Generate report<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></button>
+          <button type="button" class="btn btn-ghost" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ startDiagnosis }}">Start over</button>
+        </div>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isReport }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Report" style="flex: 1; width: 840px; max-width: calc(100% - 48px); margin: 0 auto; padding: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-4);">
+      <div class="card blueprint" style="display: flex; flex-direction: column; gap: var(--space-4);">
+        <i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+        <div style="display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 1px solid var(--color-text); padding-bottom: var(--space-3);">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-neutral-600);">Case {{ caseId }}</span>
+            <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: 34px; letter-spacing: 0.02em; text-transform: uppercase;">DispenseIQ Troubleshooting Report</h2>
+          </div>
+          <span style="font-size: 13px; color: var(--color-neutral-600); white-space: nowrap;">{{ reportDate }}</span>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-2);">
+          <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Problem description</span>
+          <p style="margin: 0; font-size: 14px; line-height: 1.55;">{{ problemSummary }}</p>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); border-top: 1px solid var(--color-divider); padding-top: var(--space-3);">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Identified defect</span>
+            <span style="font-family: var(--font-heading); font-weight: 600; font-size: 22px;">Inconsistent Dispensing Volume</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Confidence score</span>
+            <span style="font-size: 18px; letter-spacing: 2px;"><span style="color: var(--color-accent-600);">{{ starsOn }}</span><span style="color: var(--color-neutral-400);">{{ starsOff }}</span> <span style="font-size: 13px; letter-spacing: 0; color: var(--color-neutral-600);">{{ confNum }} / 5 · {{ confLabel }}</span></span>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--color-divider); padding-top: var(--space-3);">
+          <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Session Q&amp;A</span>
+          <sc-for list="{{ answerRows }}" as="r" hint-placeholder-count="5">
+            <div style="display: grid; grid-template-columns: 1fr 220px; gap: var(--space-3); font-size: 13px; padding: 4px 0; border-bottom: 1px dashed var(--color-divider);">
+              <span style="color: var(--color-neutral-600);">{{ r.q }}</span>
+              <span style="font-weight: 600; text-align: right;">{{ r.a }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--color-divider); padding-top: var(--space-3);">
+          <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Cause ranking</span>
+          <table class="table" style="width: 100%; font-size: 13px;">
+            <thead><tr><th style="text-align: left;">Possible cause</th><th style="text-align: right;">AI likelihood</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ causes }}" as="c" hint-placeholder-count="5">
+                <tr><td>{{ c.name }}</td><td style="text-align: right; font-weight: 600;">{{ c.pct }}%</td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+          <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--color-neutral-700);"><strong>AI reasoning:</strong> {{ reasoning }}</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--color-divider); padding-top: var(--space-3);">
+          <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Recommended troubleshooting sequence</span>
+          <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.45;">
+            <sc-for list="{{ plan }}" as="p" hint-placeholder-count="5">
+              <li><strong>{{ p.title }}.</strong> {{ p.detail }}</li>
+            </sc-for>
+          </ol>
+        </div>
+        <div class="field" style="display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--color-divider); padding-top: var(--space-3);">
+          <label for="diq-notes" style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Engineer notes <span style="text-transform: none; letter-spacing: 0;">(optional)</span></label>
+          <textarea id="diq-notes" class="input" rows="3" placeholder="Findings after inspection, confirmed cause, corrective action taken…" value="{{ notes }}" onChange="{{ setNotes }}" style="resize: vertical; font-family: var(--font-body); font-size: 14px; line-height: 1.5;"></textarea>
+        </div>
+      </div>
+      <div style="display: flex; gap: var(--space-3);" data-noprint="true">
+        <button type="button" class="btn btn-primary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ printReport }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>Download PDF</button>
+        <button type="button" class="btn btn-secondary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ backToResults }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Back to results</button>
+        <button type="button" class="btn btn-ghost" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ startDiagnosis }}">New diagnosis</button>
+      </div>
+    </main>
+  </sc-if>
+
+  <sc-if value="{{ isHistory }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Case history" style="flex: 1; width: 1040px; max-width: calc(100% - 48px); margin: 0 auto; padding: var(--space-8) 0; display: flex; flex-direction: column; gap: var(--space-4);">
+      <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4);">
+        <div style="display: flex; flex-direction: column; gap: var(--space-1);">
+          <span style="font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-neutral-600);">Learning database</span>
+          <h2 style="margin: 0; font-family: var(--font-heading); font-weight: 600; font-size: 40px; letter-spacing: 0.02em; text-transform: uppercase;">Case history</h2>
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--space-2); border: 1px solid var(--color-divider); padding: var(--space-2) var(--space-3); width: 300px; background: #fff; border-radius: 999px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
+          <input type="text" placeholder="Search defect, cause, material…" value="{{ search }}" onChange="{{ setSearch }}" style="border: none; outline: none; flex: 1; font-family: var(--font-body); font-size: 14px; background: transparent; color: var(--color-text);">
+        </div>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: var(--color-neutral-600);">{{ caseCount }} — resolved cases feed the "similar problems occurred before" insight on results pages.</p>
+      <table class="table" style="width: 100%; font-size: 14px;">
+        <thead>
+          <tr>
+            <th style="text-align: left;">Case</th>
+            <th style="text-align: left;">Date</th>
+            <th style="text-align: left;">Defect</th>
+            <th style="text-align: left;">Confirmed cause</th>
+            <th style="text-align: left;">Material</th>
+            <th style="text-align: left;">Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ cases }}" as="c" hint-placeholder-count="8">
+            <tr>
+              <td style="font-weight: 600;">{{ c.id }}</td>
+              <td style="white-space: nowrap;">{{ c.date }}</td>
+              <td>{{ c.defect }}</td>
+              <td>{{ c.cause }}</td>
+              <td>{{ c.material }}</td>
+              <td><span class="tag {{ c.tagCls }}" style="white-space: nowrap;">{{ c.outcome }}</span></td>
+            </tr>
+          </sc-for>
+        </tbody>
+      </table>
+      <sc-if value="{{ noCases }}" hint-placeholder-val="{{ false }}">
+        <div style="border: 1px dashed var(--color-divider); padding: var(--space-6); text-align: center; font-size: 14px; color: var(--color-neutral-600); border-radius: 16px;">No cases match "{{ search }}".</div>
+      </sc-if>
+      <div style="display: flex; gap: var(--space-3);">
+        <button type="button" class="btn btn-secondary blueprint" style="white-space: nowrap; flex-shrink: 0;" onClick="{{ goHome }}"><i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>Back to start</button>
+      </div>
+    </main>
+  </sc-if>
+
+  <footer data-noprint="true" style="border-top: 1px solid var(--color-divider); padding: var(--space-3) var(--space-6); display: flex; justify-content: space-between; font-size: 12px; color: var(--color-neutral-600);">
+    <span>DispenseIQ · Preliminary AI troubleshooting for fluid dispensing</span>
+    <span>Assists engineers — does not replace them</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;confidenceStars&quot;: { &quot;editor&quot;: &quot;range&quot;, &quot;default&quot;: 4, &quot;min&quot;: 1, &quot;max&quot;: 5, &quot;step&quot;: 1, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;Results&quot; },
+  &quot;showSimilarInsight&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Results&quot; },
+  &quot;showQualityScore&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Results&quot; }
+}">
+const WARN = 'oklch(0.62 0.11 60)';
+const QBASE = [
+  { id: 'material', q: 'What material is being dispensed?', chips: ['Adhesive', 'Solder paste', 'Epoxy', 'Sealant', 'Other fluid'] },
+  { id: 'amount', q: 'Is the dispensed amount too large or too small?', chips: ['Too small', 'Too large', 'Varies shot to shot', 'Dots missing entirely'] },
+  { id: 'timing', q: 'Is the defect continuous or occasional?', chips: ['Continuous — every shot', 'Occasional — random shots', 'Only after long runs'] },
+  { id: 'change', q: 'Has the material, nozzle or any process setting recently changed?', chips: ['Material batch changed', 'Nozzle replaced', 'Settings adjusted', 'No recent changes'] },
+  { id: 'location', q: 'Is the defect at one location or across multiple locations?', chips: ['One location', 'Multiple locations', 'Random locations'] }
+];
+const FOLLOWUP = { id: 'onset', q: 'Does the variation appear right from startup, or only after the machine has been running for some time?', chips: ['From startup', 'After running a while', 'Not sure'] };
+const CAUSES = [
+  { name: 'Air Bubble', pct: 85, top: true },
+  { name: 'Nozzle Blockage', pct: 70 },
+  { name: 'Material Viscosity Change', pct: 65 },
+  { name: 'Incorrect Parameter', pct: 45 },
+  { name: 'Equipment Problem', pct: 25 }
+];
+const PLAN = [
+  { title: 'Check the syringe for visible air bubbles', detail: 'Hold the syringe against light; purge if any bubbles are trapped near the outlet.' },
+  { title: 'Inspect the dispensing nozzle for blockage', detail: 'Remove the nozzle and check for partial clogging or cured material at the tip.' },
+  { title: 'Verify dispensing pressure and time settings', detail: 'Compare current values against the process sheet; watch for pressure drift.' },
+  { title: 'Check whether the material condition has changed', detail: 'Confirm batch age, storage temperature and pot life against spec.' },
+  { title: 'Perform several test shots and compare results', detail: 'Run 10 test dots on scrap and measure diameter spread before restarting production.' }
+];
+const HISTORY = [
+  { id: 'DQ-0146', date: '2026-08-02', defect: 'Inconsistent volume', cause: 'Air trapped in syringe', material: 'Epoxy', outcome: 'Resolved' },
+  { id: 'DQ-0145', date: '2026-07-28', defect: 'Missing dots', cause: 'Nozzle blockage', material: 'Solder paste', outcome: 'Resolved' },
+  { id: 'DQ-0144', date: '2026-07-21', defect: 'Excessive spreading', cause: 'Viscosity drop (temp)', material: 'Adhesive', outcome: 'Resolved' },
+  { id: 'DQ-0142', date: '2026-07-15', defect: 'Inconsistent volume', cause: 'Air trapped in syringe', material: 'Adhesive', outcome: 'Resolved' },
+  { id: 'DQ-0139', date: '2026-07-03', defect: 'Undersized dots', cause: 'Pressure set too low', material: 'Sealant', outcome: 'Resolved' },
+  { id: 'DQ-0137', date: '2026-06-24', defect: 'Inconsistent volume', cause: 'Air trapped in syringe', material: 'Solder paste', outcome: 'Resolved' },
+  { id: 'DQ-0135', date: '2026-06-18', defect: 'Irregular shape', cause: 'Worn nozzle tip', material: 'Epoxy', outcome: 'Monitoring' },
+  { id: 'DQ-0132', date: '2026-06-05', defect: 'Oversized dots', cause: 'Dispense time too long', material: 'Adhesive', outcome: 'Resolved' },
+  { id: 'DQ-0129', date: '2026-05-27', defect: 'Inconsistent volume', cause: 'Material batch variation', material: 'Epoxy', outcome: 'Resolved' },
+  { id: 'DQ-0126', date: '2026-05-14', defect: 'Missing dots', cause: 'Air trapped in syringe', material: 'Adhesive', outcome: 'Resolved' }
+];
+class Component extends DCLogic {
+  state = { screen: 'landing', maxStage: -1, problem: '', imageUrl: null, dragOver: false, questions: QBASE, qaIdx: 0, answers: {}, textAnswer: '', done: {}, notes: '', search: '' };
+  fileRef = React.createRef();
+  go(screen, stage) {
+    this.setState(s => ({ screen, maxStage: stage != null ? Math.max(s.maxStage, stage) : s.maxStage }));
+  }
+  answer(text) {
+    const t = String(text || '').trim();
+    if (!t) return;
+    const qs = this.state.questions.slice();
+    const q = qs[this.state.qaIdx];
+    const answers = Object.assign({}, this.state.answers);
+    answers[q.id] = t;
+    if (q.id === 'amount' && /vari/i.test(t) && !qs.some(x => x.id === 'onset')) qs.splice(this.state.qaIdx + 1, 0, FOLLOWUP);
+    const next = this.state.qaIdx + 1;
+    if (next >= qs.length) {
+      this.setState({ answers, questions: qs, textAnswer: '', screen: 'analyzing' });
+      setTimeout(() => this.setState(s => (s.screen === 'analyzing' ? { screen: 'results', maxStage: Math.max(s.maxStage, 2) } : null)), 1600);
+    } else {
+      this.setState({ answers, questions: qs, qaIdx: next, textAnswer: '' });
+    }
+  }
+  readImage(file) {
+    if (!file || !/^image\//.test(file.type)) return;
+    const r = new FileReader();
+    r.onload = () => this.setState({ imageUrl: r.result, dragOver: false });
+    r.readAsDataURL(file);
+  }
+  renderVals() {
+    const s = this.state;
+    const conf = Math.max(1, Math.min(5, Math.round(this.props.confidenceStars ?? 4)));
+    const qs = s.questions;
+    const q = qs[Math.min(s.qaIdx, qs.length - 1)];
+    const timing = s.answers.timing || '';
+    const occasional = !/continuous/i.test(timing);
+    const reasoning = (occasional
+      ? 'Air bubbles are ranked highest because the dispensing volume changes occasionally rather than continuously — a trapped bubble compresses unpredictably, so some shots deliver less material than others. A blocked nozzle or a wrong parameter would produce a continuous, repeatable error instead.'
+      : 'Air bubbles remain the leading cause, but the continuous nature you reported also keeps nozzle blockage and parameter error close behind — a persistent restriction or wrong setting produces the same error on every shot.')
+      + (/no recent/i.test(s.answers.change || '') ? ' No recent material or setting change further lowers the likelihood of viscosity or parameter causes.' : '');
+    const navDefs = [
+      { n: '01', label: 'Describe', screen: 'input', stage: 0 },
+      { n: '02', label: 'Questions', screen: 'qa', stage: 1 },
+      { n: '03', label: 'Results', screen: 'results', stage: 2 },
+      { n: '04', label: 'Report', screen: 'report', stage: 3 }
+    ];
+    const curScreen = s.screen === 'analyzing' ? 'qa' : s.screen;
+    const qual = [
+      { label: 'Shape consistency', v: 4 }, { label: 'Size consistency', v: 3 },
+      { label: 'Dispensing position', v: 5 }, { label: 'Defect risk', v: 2 }
+    ];
+    const term = s.search.trim().toLowerCase();
+    const filtered = HISTORY.filter(c => !term || [c.id, c.defect, c.cause, c.material, c.outcome, c.date].join(' ').toLowerCase().includes(term));
+    return {
+      isLanding: s.screen === 'landing', isInput: s.screen === 'input', isQa: s.screen === 'qa',
+      isAnalyzing: s.screen === 'analyzing', isResults: s.screen === 'results', isReport: s.screen === 'report', isHistory: s.screen === 'history',
+      goHome: (e) => { e.preventDefault(); this.setState({ screen: 'landing' }); },
+      goHistory: (e) => { if (e) e.preventDefault(); this.setState({ screen: 'history' }); },
+      startDiagnosis: () => this.setState({ screen: 'input', maxStage: Math.max(s.maxStage, 0), problem: '', imageUrl: null, questions: QBASE, qaIdx: 0, answers: {}, textAnswer: '', done: {}, notes: '' }),
+      continueToQa: () => this.go('qa', 1),
+      toReport: () => this.go('report', 3),
+      backToResults: () => this.setState({ screen: 'results' }),
+      navSteps: navDefs.map(d => ({
+        n: d.n, label: d.label,
+        color: curScreen === d.screen ? 'var(--color-text)' : (d.stage <= s.maxStage ? 'var(--color-text)' : 'var(--color-neutral-500)'),
+        u: curScreen === d.screen ? '2px solid var(--color-accent-600)' : '2px solid transparent',
+        go: (e) => { e.preventDefault(); if (d.stage <= s.maxStage) this.setState({ screen: d.screen }); }
+      })),
+      tickers: ['Describe the defect', 'Five smart questions', 'Ranked causes', 'Action plan & report'].map(t => ({ t })),
+      flowCells: [
+        { n: '01', title: 'Describe', body: 'State the defect in plain words, attach a photo of the result.' },
+        { n: '02', title: 'Answer', body: 'Five smart questions narrow down the symptom pattern.' },
+        { n: '03', title: 'Diagnose', body: 'Ranked causes with the reasoning behind each score.' },
+        { n: '04', title: 'Act', body: 'A checkable inspection sequence and a printable report.' }
+      ],
+      problem: s.problem, setProblem: (e) => this.setState({ problem: e.target.value }),
+      hasImage: !!s.imageUrl, noImage: !s.imageUrl,
+      previewImg: s.imageUrl ? React.createElement('img', { src: s.imageUrl, alt: 'Uploaded dispensing result', style: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' } }) : null,
+      clearImage: () => this.setState({ imageUrl: null }),
+      fileRef: this.fileRef,
+      pickFile: () => this.fileRef.current && this.fileRef.current.click(),
+      onFile: (e) => this.readImage(e.target.files && e.target.files[0]),
+      onDragOver: (e) => { e.preventDefault(); if (!s.dragOver) this.setState({ dragOver: true }); },
+      onDragLeave: () => this.setState({ dragOver: false }),
+      onDrop: (e) => { e.preventDefault(); this.readImage(e.dataTransfer.files && e.dataTransfer.files[0]); },
+      dropBorder: s.dragOver ? 'var(--color-accent-600)' : 'var(--color-neutral-500)',
+      dropBg: s.dragOver ? 'var(--color-accent-100)' : 'transparent',
+      qNum: Math.min(s.qaIdx + 1, qs.length), qTotal: qs.length, qText: q.q,
+      chips: q.chips.map(label => ({ label, pick: () => this.answer(label) })),
+      progressCells: qs.map((_, i) => ({ bg: i <= s.qaIdx ? 'var(--color-accent-600)' : 'var(--color-neutral-300)' })),
+      chatLog: qs.slice(0, s.qaIdx).map(x => ({ q: x.q, a: s.answers[x.id] || '—' })),
+      textAnswer: s.textAnswer, setTextAnswer: (e) => this.setState({ textAnswer: e.target.value }),
+      submitText: () => this.answer(s.textAnswer),
+      onAnswerKey: (e) => { if (e.key === 'Enter') this.answer(s.textAnswer); },
+      confNum: conf, starsOn: '★'.repeat(conf), starsOff: '☆'.repeat(5 - conf),
+      confLabel: conf >= 4 ? 'High confidence' : conf === 3 ? 'Moderate confidence' : 'Low confidence',
+      isHighConf: conf >= 4, notHighConf: conf < 4,
+      causes: CAUSES.map(c => ({ name: c.name, pct: c.pct, w: c.pct + '%', color: c.top ? WARN : 'var(--color-accent-500)', weight: c.top ? 600 : 400 })),
+      reasoning,
+      plan: PLAN.map((p, i) => ({
+        n: String(i + 1).padStart(2, '0'), title: p.title, detail: p.detail,
+        done: !!s.done[i], boxBg: s.done[i] ? 'var(--color-accent-600)' : 'transparent',
+        deco: s.done[i] ? 'line-through' : 'none',
+        toggle: () => this.setState(st => ({ done: Object.assign({}, st.done, { [i]: !st.done[i] }) }))
+      })),
+      showSimilar: (this.props.showSimilarInsight ?? true) !== false,
+      showQuality: !!(this.props.showQualityScore ?? false),
+      qualityRows: qual.map(x => ({ label: x.label, on: '★'.repeat(x.v), off: '☆'.repeat(5 - x.v) })),
+      caseId: 'DQ-0147', reportDate: 'August 14, 2026',
+      problemSummary: s.problem.trim() || 'Dispensing dot size varies between boards; some dots within spec, others visibly undersized. Reported by line operator during second shift.',
+      answerRows: qs.filter(x => s.answers[x.id]).map(x => ({ q: x.q, a: s.answers[x.id] })),
+      notes: s.notes, setNotes: (e) => this.setState({ notes: e.target.value }),
+      printReport: () => window.print(),
+      search: s.search, setSearch: (e) => this.setState({ search: e.target.value }),
+      cases: filtered.map(c => ({ ...c, tagCls: c.outcome === 'Resolved' ? 'tag-accent' : 'tag-neutral' })),
+      noCases: filtered.length === 0,
+      caseCount: filtered.length + ' of ' + HISTORY.length + ' cases shown'
+    };
+  }
+}
+</script>
+</body>
+</html>
