@@ -106,67 +106,36 @@ function startDiagnosis() {
 
 async function analyzeWithGemini() {
   try {
-    const base64Img = state.imageUrl.split(',')[1];
-    const mimeType = state.imageUrl.match(/data:(.*?);/)[1];
-    
-    let promptText = `You are an AI troubleshooting assistant for fluid dispensing defects. 
-The user has reported this problem: "${state.problem}"
-They answered these questions:
-${state.questions.map(q => q.q + " -> " + (state.answers[q.id] || "No answer")).join('\n')}
-
-Analyze the provided image of the dispensing result. Identify the possible defect (e.g. Missing Dot, Oversized Dot, Undersized Dot, Irregular Shape, Excessive Spreading, Inconsistent Dispensing Volume) and provide possible causes.
-${state.strictMode ? 'APPLY STRICT QUALITY CONTROL: Penalize the quality scores very heavily for even minor defects, variations, or irregularities in shape and size.' : 'Apply standard quality assessment based on general manufacturing tolerances.'}
-Evaluate your confidence from 1 to 5 based on how clear the image and symptoms are.
-Assess the quality score out of 5 for various metrics, and an overall score out of 100.
-Return ONLY a JSON object with this exact structure (no markdown formatting, just raw JSON). YOU MUST REPLACE THE EXAMPLE VALUES WITH YOUR ACTUAL ANALYSIS:
-{
-  "defect": "[Identified Defect Name]",
-  "confidenceScore": 0,
-  "symptoms": ["[Symptom 1]", "[Symptom 2]"],
-  "causes": [
-    {"name": "[Cause 1]", "pct": 0},
-    {"name": "[Cause 2]", "pct": 0}
-  ],
-  "qualityScore": {
-    "shapeConsistency": 0,
-    "sizeConsistency": 0,
-    "dispensingPosition": 0,
-    "defectRisk": 0,
-    "overall": 0
-  },
-  "reasoning": "[Detailed explanation based on the image and answers]"
-}`;
-
-    const req = {
-      contents: [{
-        parts: [
-          { text: promptText },
-          { inlineData: { mimeType, data: base64Img } }
-        ]
-      }]
+    // 1. Pack the user's inputs into a clean payload
+    const payload = {
+      problem: state.problem,
+      answers: state.answers,
+      imageUrl: state.imageUrl,
+      strictMode: state.strictMode
     };
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${state.apiKey}`, {
+    // 2. Send the payload to your new Node.js Express backend
+    const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req)
+      body: JSON.stringify(payload)
     });
-    
-    const data = await res.json();
-    let text = data.candidates[0].content.parts[0].text;
-    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    const startIdx = text.indexOf('{');
-    const endIdx = text.lastIndexOf('}');
-    if (startIdx !== -1 && endIdx !== -1) {
-      text = text.substring(startIdx, endIdx + 1);
+
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.error || 'Backend analysis failed');
     }
-    state.aiResult = JSON.parse(text);
-    
+
+    // 3. Receive the generated JSON and the real database matches
+    const data = await res.json();
+    state.aiResult = data.aiResult;
+    state.matchedCases = data.matchedCases; // Save the real history hits to state
+
   } catch (err) {
-    console.error("Gemini AI Error:", err);
-    state.aiResult = null; // Fallback to mock data on error
+    console.error("Diagnostic Error:", err);
+    state.aiResult = null; // Fallback on error
   }
-  
+
   if (state.screen === 'analyzing') setScreen('results', 2);
 }
 
@@ -184,7 +153,7 @@ function answer(text) {
   if (next >= qs.length) {
     state.screen = 'analyzing';
     render();
-    if (!state.demoMode && state.imageUrl && state.apiKey) {
+    if (!state.demoMode) {
       analyzeWithGemini();
     } else {
       setTimeout(() => {
@@ -295,10 +264,6 @@ function inputHTML() {
       <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
     </div>
     <div class="field">
-      <label for="diq-apikey">Gemini API Key</label>
-      <input type="password" id="diq-apikey" class="input" placeholder="Enter your Google Gemini API Key" value="${esc(state.apiKey)}">
-    </div>
-    <div class="field">
       <span class="field-label">Photo of the dispensing result <span class="opt">(optional)</span></span>
       ${imageBlock}
       <input type="file" id="diq-file" accept="image/*" style="display: none;">
@@ -375,33 +340,35 @@ function resultsHTML() {
   const confTag = c >= 4
     ? '<span class="tag conf-high">High confidence</span>'
     : `<span class="tag tag-neutral">${confLabel}</span>`;
-    
-  const similar = CONFIG.showSimilarInsight ? `
+
+  const matchCount = state.matchedCases ? state.matchedCases.length : 0;
+
+  const similar = CONFIG.showSimilarInsight && matchCount > 0 ? `
     <div class="card insight-card">
       <div class="card-kicker">From case history</div>
-      <div class="big-n"><b>12×</b><span>similar problems recorded</span></div>
-      <p>In <strong>8 of 12</strong> previous cases the confirmed cause was air trapped inside the syringe.</p>
+      <div class="big-n"><b>${matchCount}×</b><span>similar problems recorded</span></div>
+      <p>The closest historical match was <strong>${esc(state.matchedCases[0].defect_type)}</strong> caused by ${esc(state.matchedCases[0].root_cause.toLowerCase())}.</p>
       <a href="#" data-action="go-history">View case history →</a>
     </div>` : '';
 
   const qs = state.aiResult && state.aiResult.qualityScore ? state.aiResult.qualityScore : {
     shapeConsistency: 4, sizeConsistency: 3, dispensingPosition: 5, defectRisk: 2, overall: 78
   };
-  
+
   const qual = [
-    { label: 'Shape consistency', v: qs.shapeConsistency || 4 }, 
+    { label: 'Shape consistency', v: qs.shapeConsistency || 4 },
     { label: 'Size consistency', v: qs.sizeConsistency || 3 },
-    { label: 'Dispensing position', v: qs.dispensingPosition || 5 }, 
+    { label: 'Dispensing position', v: qs.dispensingPosition || 5 },
     { label: 'Defect risk', v: qs.defectRisk || 2 }
   ];
-  
+
   const quality = CONFIG.showQualityScore ? `
     <div class="card">
       <div class="card-kicker">Dispensing quality assessment</div>
       ${qual.map(x => `<div class="quality-row"><span>${x.label}</span><span class="stars"><span class="stars-on">${stars(x.v)}</span></span></div>`).join('')}
       <div class="quality-total"><span>Overall quality</span><strong>${qs.overall || 78} / 100</strong></div>
     </div>` : '';
-    
+
   const aiSymptomsList = state.aiResult && Array.isArray(state.aiResult.symptoms) ? state.aiResult.symptoms : [
     "Some dispensing dots are larger than specified",
     "Some dispensing dots are smaller than specified",
@@ -409,16 +376,37 @@ function resultsHTML() {
     "Defect appears occasionally, not on every cycle"
   ];
   const aiSymptoms = aiSymptomsList.map(s => `<li>${esc(s)}</li>`).join('');
-  
+
   const aiCausesList = state.aiResult && Array.isArray(state.aiResult.causes) && state.aiResult.causes.length > 0 ? state.aiResult.causes : CAUSES;
   const aiReasoning = state.aiResult && state.aiResult.reasoning ? state.aiResult.reasoning : reasoning();
 
   const causesHTML = aiCausesList.map((cause, i) =>
-    `<div class="cause-row${i===0 ? ' top' : ''}">
+    `<div class="cause-row${i === 0 ? ' top' : ''}">
       <span class="name">${esc(cause.name || 'Unknown cause')}</span>
       <div class="cause-bar"><i style="width: ${cause.pct || 0}%;"></i></div>
       <span class="pct">${cause.pct || 0}%</span>
     </div>`).join('');
+
+  // --- NEW: Generate the Dynamic Action Plan HTML ---
+  // Safely grab the action plan from the AI result, or default to an empty array
+  const aiActionPlan = state.aiResult?.actionPlan || [];
+
+  // Map over the AI's steps. (If the AI fails to generate it, fallback to your old planRows())
+  const dynamicPlanHTML = aiActionPlan.length > 0 ? aiActionPlan.map((item, index) => `
+    <div class="plan-row" style="display: flex; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--border-light, #eee);">
+      <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-muted, #a0aec0); width: 40px; line-height: 1.2;">
+        ${String(index + 1).padStart(2, '0')}
+      </div>
+      <label class="check-box" style="margin-right: 16px; margin-top: 2px; cursor: pointer;">
+        <input type="checkbox" style="accent-color: var(--primary);">
+      </label>
+      <div style="flex: 1;">
+        <div style="font-weight: 700; color: var(--text-main, #2d3748); margin-bottom: 4px;">${esc(item.step)}</div>
+        <div style="color: var(--text-muted, #718096); font-size: 0.9rem; line-height: 1.4;">${esc(item.detail)}</div>
+      </div>
+    </div>
+  `).join('') : planRows();
+  // ------------------------------------------------
 
   return `<main class="screen-wide" data-screen="results">
     <div class="results-head">
@@ -451,14 +439,15 @@ function resultsHTML() {
       <div class="why-box">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-icon)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
         <div class="inner">
-          <span class="lbl">Why ${esc((aiCausesList[0].name || 'this cause').toLowerCase())} ranks highest</span>
+          <span class="lbl">Why ${esc((aiCausesList[0]?.name || 'this cause').toLowerCase())} ranks highest</span>
           <p>${esc(aiReasoning)}</p>
         </div>
       </div>
     </div>
     <div class="card plan-card">
       <div class="card-kicker">What to do next · Recommended action plan</div>
-      <div class="plan-list">${planRows()}</div>
+      <!-- NEW: Replaced planRows() with dynamicPlanHTML -->
+      <div class="plan-list">${dynamicPlanHTML}</div>
       <div class="btn-row">
         <button type="button" class="btn btn-primary" data-action="to-report">Generate report${ARROW}</button>
         <button type="button" class="btn btn-ghost" data-action="start-diagnosis">Start over</button>
@@ -473,10 +462,13 @@ function reportHTML() {
   const problemSummary = state.problem.trim()
     || 'Dispensing dot size varies between boards; some dots within spec, others visibly undersized. Reported by line operator during second shift.';
   const answered = state.questions.filter(x => state.answers[x.id]);
-  
+
   const aiDefect = state.aiResult ? state.aiResult.defect : 'Inconsistent Dispensing Volume';
   const aiCausesList = state.aiResult ? state.aiResult.causes : CAUSES;
   const aiReasoning = state.aiResult ? state.aiResult.reasoning : reasoning();
+
+  // NEW: Grab the dynamic action plan from the AI, or fallback to the hardcoded PLAN
+  const aiActionPlan = state.aiResult && state.aiResult.actionPlan ? state.aiResult.actionPlan : PLAN;
 
   return `<main class="screen-report" data-screen="report">
     <div class="card report-card">
@@ -504,8 +496,8 @@ function reportHTML() {
       <div class="report-sec">
         <span class="kicker">Session Q&amp;A</span>
         ${answered.length
-          ? answered.map(x => `<div class="report-qa-row"><span class="q">${x.q}</span><span class="a">${esc(state.answers[x.id])}</span></div>`).join('')
-          : '<p class="reasoning">No questions answered this session.</p>'}
+      ? answered.map(x => `<div class="report-qa-row"><span class="q">${x.q}</span><span class="a">${esc(state.answers[x.id])}</span></div>`).join('')
+      : '<p class="reasoning">No questions answered this session.</p>'}
       </div>
       <div class="report-sec">
         <span class="kicker">Cause ranking</span>
@@ -517,7 +509,8 @@ function reportHTML() {
       </div>
       <div class="report-sec">
         <span class="kicker">Recommended troubleshooting sequence</span>
-        <ol>${PLAN.map(p => `<li><strong>${p.title}.</strong> ${p.detail}</li>`).join('')}</ol>
+        <!-- NEW: Maps the dynamic aiActionPlan, checking for both .step (AI) and .title (Fallback) -->
+        <ol>${aiActionPlan.map(p => `<li><strong>${esc(p.step || p.title)}.</strong> ${esc(p.detail)}</li>`).join('')}</ol>
       </div>
       <div class="report-sec field">
         <label for="diq-notes" class="kicker">Engineer notes <span style="text-transform: none; letter-spacing: 0;">(optional)</span></label>
