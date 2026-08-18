@@ -50,6 +50,22 @@
   --shadow-lg: 0 12px 32px color-mix(in srgb, #2b2b2d 22%, transparent);
 }
 
+[data-theme="dark"] {
+  --color-bg: #000000;
+  --color-surface: #121212;
+  --color-text: #e0e0e0;
+  --color-divider: color-mix(in srgb, #ffffff 16%, transparent);
+}
+[data-theme="dark"] .card, 
+[data-theme="dark"] .input,
+[data-theme="dark"] .qa-log .q,
+[data-theme="dark"] .image-chip,
+[data-theme="dark"] .search-pill,
+[data-theme="dark"] .step-pill,
+[data-theme="dark"] .cause-bar { background: #121212; border-color: var(--color-divider); }
+[data-theme="dark"] .btn-secondary { background: #1a1a1a; color: #fff; }
+[data-theme="dark"] .btn-secondary:hover { background: #333; }
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {

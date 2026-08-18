@@ -4,9 +4,8 @@
 
 /* ── configuration (was the design's props panel) ─────────────────── */
 const CONFIG = {
-  confidenceStars: 4,      // 1–5
   showSimilarInsight: true,
-  showQualityScore: false
+  showQualityScore: true
 };
 
 /* ── knowledge base ───────────────────────────────────────────────── */
@@ -51,12 +50,17 @@ const state = {
   maxStage: -1,        // highest unlocked nav stage (0..3)
   problem: '',
   imageUrl: null,
+  apiKey: '', // DO NOT HARDCODE API KEYS IN PUBLIC REPOSITORIES
+  aiResult: null,
   questions: QBASE.slice(),
   qaIdx: 0,
   answers: {},
   done: {},
   notes: '',
-  search: ''
+  search: '',
+  theme: 'light',
+  demoMode: false,
+  strictMode: false
 };
 
 const CASE_ID = 'DQ-0147';
@@ -71,8 +75,6 @@ function esc(s) {
 const ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
 
 /* ── derived values ───────────────────────────────────────────────── */
-function conf() { return Math.max(1, Math.min(5, Math.round(CONFIG.confidenceStars))); }
-function confLabel() { const c = conf(); return c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence'; }
 function stars(on) { return '★'.repeat(on) + '</span><span class="stars-off">' + '☆'.repeat(5 - on); }
 
 function reasoning() {
@@ -96,10 +98,76 @@ function setScreen(screen, stage) {
 
 function startDiagnosis() {
   Object.assign(state, {
-    problem: '', imageUrl: null, questions: QBASE.slice(), qaIdx: 0,
+    problem: '', imageUrl: null, aiResult: null, questions: QBASE.slice(), qaIdx: 0,
     answers: {}, done: {}, notes: ''
   });
   setScreen('input', 0);
+}
+
+async function analyzeWithGemini() {
+  try {
+    const base64Img = state.imageUrl.split(',')[1];
+    const mimeType = state.imageUrl.match(/data:(.*?);/)[1];
+    
+    let promptText = `You are an AI troubleshooting assistant for fluid dispensing defects. 
+The user has reported this problem: "${state.problem}"
+They answered these questions:
+${state.questions.map(q => q.q + " -> " + (state.answers[q.id] || "No answer")).join('\n')}
+
+Analyze the provided image of the dispensing result. Identify the possible defect (e.g. Missing Dot, Oversized Dot, Undersized Dot, Irregular Shape, Excessive Spreading, Inconsistent Dispensing Volume) and provide possible causes.
+${state.strictMode ? 'APPLY STRICT QUALITY CONTROL: Penalize the quality scores very heavily for even minor defects, variations, or irregularities in shape and size.' : 'Apply standard quality assessment based on general manufacturing tolerances.'}
+Evaluate your confidence from 1 to 5 based on how clear the image and symptoms are.
+Assess the quality score out of 5 for various metrics, and an overall score out of 100.
+Return ONLY a JSON object with this exact structure (no markdown formatting, just raw JSON). YOU MUST REPLACE THE EXAMPLE VALUES WITH YOUR ACTUAL ANALYSIS:
+{
+  "defect": "[Identified Defect Name]",
+  "confidenceScore": 0,
+  "symptoms": ["[Symptom 1]", "[Symptom 2]"],
+  "causes": [
+    {"name": "[Cause 1]", "pct": 0},
+    {"name": "[Cause 2]", "pct": 0}
+  ],
+  "qualityScore": {
+    "shapeConsistency": 0,
+    "sizeConsistency": 0,
+    "dispensingPosition": 0,
+    "defectRisk": 0,
+    "overall": 0
+  },
+  "reasoning": "[Detailed explanation based on the image and answers]"
+}`;
+
+    const req = {
+      contents: [{
+        parts: [
+          { text: promptText },
+          { inlineData: { mimeType, data: base64Img } }
+        ]
+      }]
+    };
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${state.apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(req)
+    });
+    
+    const data = await res.json();
+    let text = data.candidates[0].content.parts[0].text;
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    const startIdx = text.indexOf('{');
+    const endIdx = text.lastIndexOf('}');
+    if (startIdx !== -1 && endIdx !== -1) {
+      text = text.substring(startIdx, endIdx + 1);
+    }
+    state.aiResult = JSON.parse(text);
+    
+  } catch (err) {
+    console.error("Gemini AI Error:", err);
+    state.aiResult = null; // Fallback to mock data on error
+  }
+  
+  if (state.screen === 'analyzing') setScreen('results', 2);
 }
 
 function answer(text) {
@@ -116,9 +184,13 @@ function answer(text) {
   if (next >= qs.length) {
     state.screen = 'analyzing';
     render();
-    setTimeout(() => {
-      if (state.screen === 'analyzing') setScreen('results', 2);
-    }, 1600);
+    if (!state.demoMode && state.imageUrl && state.apiKey) {
+      analyzeWithGemini();
+    } else {
+      setTimeout(() => {
+        if (state.screen === 'analyzing') setScreen('results', 2);
+      }, 1600);
+    }
   } else {
     state.qaIdx = next;
     render();
@@ -223,6 +295,10 @@ function inputHTML() {
       <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
     </div>
     <div class="field">
+      <label for="diq-apikey">Gemini API Key</label>
+      <input type="password" id="diq-apikey" class="input" placeholder="Enter your Google Gemini API Key" value="${esc(state.apiKey)}">
+    </div>
+    <div class="field">
       <span class="field-label">Photo of the dispensing result <span class="opt">(optional)</span></span>
       ${imageBlock}
       <input type="file" id="diq-file" accept="image/*" style="display: none;">
@@ -293,10 +369,13 @@ function planRows() {
 }
 
 function resultsHTML() {
-  const c = conf();
+  const aiDefect = state.aiResult ? state.aiResult.defect : 'Inconsistent Dispensing Volume';
+  const c = state.aiResult ? state.aiResult.confidenceScore : 4;
+  const confLabel = c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence';
   const confTag = c >= 4
     ? '<span class="tag conf-high">High confidence</span>'
-    : `<span class="tag tag-neutral">${confLabel()}</span>`;
+    : `<span class="tag tag-neutral">${confLabel}</span>`;
+    
   const similar = CONFIG.showSimilarInsight ? `
     <div class="card insight-card">
       <div class="card-kicker">From case history</div>
@@ -304,16 +383,43 @@ function resultsHTML() {
       <p>In <strong>8 of 12</strong> previous cases the confirmed cause was air trapped inside the syringe.</p>
       <a href="#" data-action="go-history">View case history →</a>
     </div>` : '';
+
+  const qs = state.aiResult && state.aiResult.qualityScore ? state.aiResult.qualityScore : {
+    shapeConsistency: 4, sizeConsistency: 3, dispensingPosition: 5, defectRisk: 2, overall: 78
+  };
+  
   const qual = [
-    { label: 'Shape consistency', v: 4 }, { label: 'Size consistency', v: 3 },
-    { label: 'Dispensing position', v: 5 }, { label: 'Defect risk', v: 2 }
+    { label: 'Shape consistency', v: qs.shapeConsistency || 4 }, 
+    { label: 'Size consistency', v: qs.sizeConsistency || 3 },
+    { label: 'Dispensing position', v: qs.dispensingPosition || 5 }, 
+    { label: 'Defect risk', v: qs.defectRisk || 2 }
   ];
+  
   const quality = CONFIG.showQualityScore ? `
     <div class="card">
       <div class="card-kicker">Dispensing quality assessment</div>
       ${qual.map(x => `<div class="quality-row"><span>${x.label}</span><span class="stars"><span class="stars-on">${stars(x.v)}</span></span></div>`).join('')}
-      <div class="quality-total"><span>Overall quality</span><strong>78 / 100</strong></div>
+      <div class="quality-total"><span>Overall quality</span><strong>${qs.overall || 78} / 100</strong></div>
     </div>` : '';
+    
+  const aiSymptomsList = state.aiResult && Array.isArray(state.aiResult.symptoms) ? state.aiResult.symptoms : [
+    "Some dispensing dots are larger than specified",
+    "Some dispensing dots are smaller than specified",
+    "Results are not repeatable shot to shot",
+    "Defect appears occasionally, not on every cycle"
+  ];
+  const aiSymptoms = aiSymptomsList.map(s => `<li>${esc(s)}</li>`).join('');
+  
+  const aiCausesList = state.aiResult && Array.isArray(state.aiResult.causes) && state.aiResult.causes.length > 0 ? state.aiResult.causes : CAUSES;
+  const aiReasoning = state.aiResult && state.aiResult.reasoning ? state.aiResult.reasoning : reasoning();
+
+  const causesHTML = aiCausesList.map((cause, i) =>
+    `<div class="cause-row${i===0 ? ' top' : ''}">
+      <span class="name">${esc(cause.name || 'Unknown cause')}</span>
+      <div class="cause-bar"><i style="width: ${cause.pct || 0}%;"></i></div>
+      <span class="pct">${cause.pct || 0}%</span>
+    </div>`).join('');
+
   return `<main class="screen-wide" data-screen="results">
     <div class="results-head">
       <h2 class="screen-title">Analysis results</h2>
@@ -325,7 +431,7 @@ function resultsHTML() {
           <div class="card-kicker">What's wrong · Identified defect</div>
           ${confTag}
         </div>
-        <div class="defect-name">Inconsistent Dispensing Volume</div>
+        <div class="defect-name">${esc(aiDefect)}</div>
         <div class="stars-row">
           <span class="stars-on">${stars(c)}</span>
           <span class="lbl">Confidence ${c} / 5</span>
@@ -333,10 +439,7 @@ function resultsHTML() {
         <div class="symptoms">
           <span class="kicker">Matching symptoms</span>
           <ul>
-            <li>Some dispensing dots are larger than specified</li>
-            <li>Some dispensing dots are smaller than specified</li>
-            <li>Results are not repeatable shot to shot</li>
-            <li>Defect appears occasionally, not on every cycle</li>
+            ${aiSymptoms}
           </ul>
         </div>
       </div>
@@ -344,12 +447,12 @@ function resultsHTML() {
     </div>
     <div class="card causes-card">
       <div class="card-kicker">Why · Ranked probable causes</div>
-      <div class="cause-list">${causeRows()}</div>
+      <div class="cause-list">${causesHTML}</div>
       <div class="why-box">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-icon)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
         <div class="inner">
-          <span class="lbl">Why air bubble ranks highest</span>
-          <p>${reasoning()}</p>
+          <span class="lbl">Why ${esc((aiCausesList[0].name || 'this cause').toLowerCase())} ranks highest</span>
+          <p>${esc(aiReasoning)}</p>
         </div>
       </div>
     </div>
@@ -365,10 +468,16 @@ function resultsHTML() {
 }
 
 function reportHTML() {
-  const c = conf();
+  const c = state.aiResult ? state.aiResult.confidenceScore : 4;
+  const confLabel = c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence';
   const problemSummary = state.problem.trim()
     || 'Dispensing dot size varies between boards; some dots within spec, others visibly undersized. Reported by line operator during second shift.';
   const answered = state.questions.filter(x => state.answers[x.id]);
+  
+  const aiDefect = state.aiResult ? state.aiResult.defect : 'Inconsistent Dispensing Volume';
+  const aiCausesList = state.aiResult ? state.aiResult.causes : CAUSES;
+  const aiReasoning = state.aiResult ? state.aiResult.reasoning : reasoning();
+
   return `<main class="screen-report" data-screen="report">
     <div class="card report-card">
       <div class="report-head">
@@ -385,11 +494,11 @@ function reportHTML() {
       <div class="report-2col">
         <div>
           <span class="kicker">Identified defect</span>
-          <span class="val">Inconsistent Dispensing Volume</span>
+          <span class="val">${esc(aiDefect)}</span>
         </div>
         <div>
           <span class="kicker">Confidence score</span>
-          <span class="stars-line"><span class="stars-on">${stars(c)}</span> <span class="lbl">${c} / 5 · ${confLabel()}</span></span>
+          <span class="stars-line"><span class="stars-on">${stars(c)}</span> <span class="lbl">${c} / 5 · ${confLabel}</span></span>
         </div>
       </div>
       <div class="report-sec">
@@ -402,9 +511,9 @@ function reportHTML() {
         <span class="kicker">Cause ranking</span>
         <table class="table">
           <thead><tr><th>Possible cause</th><th style="text-align: right;">AI likelihood</th></tr></thead>
-          <tbody>${CAUSES.map(x => `<tr><td>${x.name}</td><td class="pct">${x.pct}%</td></tr>`).join('')}</tbody>
+          <tbody>${aiCausesList.map(x => `<tr><td>${esc(x.name)}</td><td class="pct">${x.pct}%</td></tr>`).join('')}</tbody>
         </table>
-        <p class="reasoning"><strong>AI reasoning:</strong> ${reasoning()}</p>
+        <p class="reasoning"><strong>AI reasoning:</strong> ${esc(aiReasoning)}</p>
       </div>
       <div class="report-sec">
         <span class="kicker">Recommended troubleshooting sequence</span>
@@ -467,12 +576,49 @@ function historyHTML() {
   </main>`;
 }
 
+function settingsHTML() {
+  return `<main class="screen-narrow" data-screen="settings">
+    <div class="screen-head">
+      <span class="kicker">App configuration</span>
+      <h2 class="screen-title">Settings</h2>
+    </div>
+    <div class="card qa-card" style="padding: 32px;">
+      <div class="field">
+        <label style="margin-bottom: 8px;">Theme Color</label>
+        <div class="chip-row">
+          <button type="button" class="btn ${state.theme === 'light' ? 'btn-primary' : 'btn-secondary'}" data-action="set-theme" data-value="light">Light (Default)</button>
+          <button type="button" class="btn ${state.theme === 'dark' ? 'btn-primary' : 'btn-secondary'}" data-action="set-theme" data-value="dark">Dark (Black Background)</button>
+        </div>
+      </div>
+      <div class="field" style="margin-top: 24px;">
+        <label style="margin-bottom: 8px;">Analysis Mode</label>
+        <div class="chip-row">
+          <button type="button" class="btn ${!state.demoMode ? 'btn-primary' : 'btn-secondary'}" data-action="set-demo" data-value="false">Live AI API (Requires Wi-Fi)</button>
+          <button type="button" class="btn ${state.demoMode ? 'btn-primary' : 'btn-secondary'}" data-action="set-demo" data-value="true">Offline Demo Mode (Instant Mock)</button>
+        </div>
+        <span style="font-size: 12px; color: var(--color-neutral-600); margin-top: 6px;">Demo mode skips the Gemini API call and instantly loads the fallback data. Perfect for fast, live presentations!</span>
+      </div>
+      <div class="field" style="margin-top: 24px;">
+        <label style="margin-bottom: 8px;">AI Strictness (Live API only)</label>
+        <div class="chip-row">
+          <button type="button" class="btn ${!state.strictMode ? 'btn-primary' : 'btn-secondary'}" data-action="set-strict" data-value="false">Standard Analysis</button>
+          <button type="button" class="btn ${state.strictMode ? 'btn-primary' : 'btn-secondary'}" data-action="set-strict" data-value="true">Strict Quality Control</button>
+        </div>
+        <span style="font-size: 12px; color: var(--color-neutral-600); margin-top: 6px;">Strict mode tells the AI to deduct more quality points for even minor variations in dot sizes and shapes.</span>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button type="button" class="btn btn-secondary" data-action="go-home">Back to start</button>
+    </div>
+  </main>`;
+}
+
 /* ── render + wiring ──────────────────────────────────────────────── */
 function render() {
   renderNav();
   const screens = {
     landing: landingHTML, input: inputHTML, qa: qaHTML,
-    analyzing: analyzingHTML, results: resultsHTML, report: reportHTML, history: historyHTML
+    analyzing: analyzingHTML, results: resultsHTML, report: reportHTML, history: historyHTML, settings: settingsHTML
   };
   app.innerHTML = screens[state.screen]();
   wireScreen();
@@ -482,6 +628,9 @@ function render() {
 function wireScreen() {
   const problem = document.getElementById('diq-problem');
   if (problem) problem.addEventListener('input', e => { state.problem = e.target.value; });
+
+  const apikey = document.getElementById('diq-apikey');
+  if (apikey) apikey.addEventListener('input', e => { state.apiKey = e.target.value; });
 
   const notes = document.getElementById('diq-notes');
   if (notes) notes.addEventListener('input', e => { state.notes = e.target.value; });
@@ -528,6 +677,16 @@ document.addEventListener('click', e => {
   switch (action) {
     case 'go-home': setScreen('landing'); break;
     case 'go-history': setScreen('history'); break;
+    case 'go-settings': setScreen('settings'); break;
+    case 'set-theme': {
+      state.theme = el.dataset.value;
+      if (state.theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+      render();
+      break;
+    }
+    case 'set-demo': state.demoMode = el.dataset.value === 'true'; render(); break;
+    case 'set-strict': state.strictMode = el.dataset.value === 'true'; render(); break;
     case 'start-diagnosis': startDiagnosis(); break;
     case 'continue-qa': setScreen('qa', 1); break;
     case 'to-report': setScreen('report', 3); break;
