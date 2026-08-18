@@ -52,6 +52,7 @@ const state = {
   imageUrl: null,
   apiKey: '', // DO NOT HARDCODE API KEYS IN PUBLIC REPOSITORIES
   aiResult: null,
+  analysisError: null, // set when a LIVE analysis fails, so results shows an error instead of mock data
   questions: QBASE.slice(),
   qaIdx: 0,
   answers: {},
@@ -98,13 +99,14 @@ function setScreen(screen, stage) {
 
 function startDiagnosis() {
   Object.assign(state, {
-    problem: '', imageUrl: null, aiResult: null, questions: QBASE.slice(), qaIdx: 0,
+    problem: '', imageUrl: null, aiResult: null, analysisError: null, questions: QBASE.slice(), qaIdx: 0,
     answers: {}, done: {}, notes: ''
   });
   setScreen('input', 0);
 }
 
 async function analyzeWithGemini() {
+  state.analysisError = null; // clear any error from a previous attempt
   try {
     // 1. Pack the user's inputs into a clean payload
     const payload = {
@@ -133,7 +135,10 @@ async function analyzeWithGemini() {
 
   } catch (err) {
     console.error("Diagnostic Error:", err);
-    state.aiResult = null; // Fallback on error
+    state.aiResult = null;
+    // Record the failure so the results screen shows an honest error instead of
+    // silently rendering the hardcoded placeholder diagnosis as if it were real.
+    state.analysisError = err.message || 'The analysis service did not respond.';
   }
 
   if (state.screen === 'analyzing') setScreen('results', 2);
@@ -334,6 +339,31 @@ function planRows() {
 }
 
 function resultsHTML() {
+  // If a LIVE analysis failed, show an explicit error — never fall through to the
+  // placeholder numbers below, which would look like a genuine AI diagnosis.
+  if (state.analysisError) {
+    return `<main class="screen-narrow" data-screen="results">
+      <div class="screen-head">
+        <span class="kicker">Step 03 · Analysis</span>
+        <h2 class="screen-title">Analysis couldn't complete</h2>
+      </div>
+      <div class="card qa-card" style="padding: 32px; border-left: 4px solid var(--warn-icon, #e53e3e);">
+        <div style="display: flex; gap: 12px; align-items: flex-start;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--warn-icon, #e53e3e)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+          <div>
+            <div style="font-weight: 700; margin-bottom: 6px;">The AI service didn't return a result.</div>
+            <p style="color: var(--color-neutral-600); margin: 0 0 8px;">No diagnosis is shown, because the live analysis failed. Showing a result here would mean displaying placeholder data, not a real assessment of your problem.</p>
+            <p style="font-size: 12px; color: var(--color-neutral-500); margin: 0;">Details: ${esc(state.analysisError)}</p>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top: 20px;">
+          <button type="button" class="btn btn-primary" data-action="retry-analysis">Try again${ARROW}</button>
+          <button type="button" class="btn btn-ghost" data-action="go-settings">Switch to Demo Mode</button>
+        </div>
+      </div>
+    </main>`;
+  }
+
   const aiDefect = state.aiResult ? state.aiResult.defect : 'Inconsistent Dispensing Volume';
   const c = state.aiResult ? state.aiResult.confidenceScore : 4;
   const confLabel = c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence';
@@ -689,6 +719,12 @@ document.addEventListener('click', e => {
       if (stage <= state.maxStage) setScreen(el.dataset.screen);
       break;
     }
+    case 'retry-analysis':
+      state.analysisError = null;
+      state.screen = 'analyzing';
+      render();
+      analyzeWithGemini();
+      break;
     case 'chip': answer(el.dataset.value); break;
     case 'submit-answer': answer(document.getElementById('diq-answer').value); break;
     case 'pick-file': document.getElementById('diq-file').click(); break;

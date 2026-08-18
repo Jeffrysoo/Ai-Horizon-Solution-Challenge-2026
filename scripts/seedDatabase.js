@@ -1,9 +1,19 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase and Google API
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+// Initialize Supabase and Google API.
+// Seeding writes rows, so it needs the service_role key — the publishable key is
+// read-only once RLS is enabled (see supabase/rls_policies.sql). Falls back to the
+// publishable key only if the service key is not set.
+const supabase = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY
+);
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+if (!process.env.SUPABASE_SERVICE_KEY) {
+    console.warn("Warning: SUPABASE_SERVICE_KEY not set — writes will fail if RLS is enabled. Add it to .env (Supabase → Project Settings → API → service_role key).");
+}
 
 // Function to generate the 3072-dimension vector
 async function generateEmbedding(text) {
