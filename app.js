@@ -64,8 +64,12 @@ const state = {
   strictMode: false
 };
 
-const CASE_ID = 'DQ-0147';
-const REPORT_DATE = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+// Case ID / date are regenerated per diagnosis (see startDiagnosis) so each report is
+// distinct. Sequence continues from the newest case in HISTORY (DQ-0146).
+let caseSeq = 146;
+function nextCaseId() { return 'DQ-' + String(++caseSeq).padStart(4, '0'); }
+let CASE_ID = 'DQ-0147'; // placeholder; startDiagnosis assigns the real one (first run = DQ-0147)
+let REPORT_DATE = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
 const app = document.getElementById('app');
 
@@ -102,6 +106,9 @@ function startDiagnosis() {
     problem: '', imageUrl: null, aiResult: null, analysisError: null, questions: QBASE.slice(), qaIdx: 0,
     answers: {}, done: {}, notes: ''
   });
+  // Fresh case identity for this diagnosis so every generated report is distinct.
+  CASE_ID = nextCaseId();
+  REPORT_DATE = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   setScreen('input', 0);
 }
 

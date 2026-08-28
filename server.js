@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import 'dotenv/config';
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
 
 // ES Module equivalent for __dirname
@@ -24,6 +24,53 @@ app.use(express.json({ limit: '10mb' }));
 // Pulls securely from your hidden .env file
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
+
+// Enforced shape of the model's reply. With responseMimeType 'application/json' +
+// this schema, Gemini can ONLY emit valid JSON in this structure — no markdown
+// fences, no prose, no missing fields — so JSON.parse below can never throw on format.
+const DIAGNOSIS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    defect: { type: Type.STRING },
+    confidenceScore: { type: Type.INTEGER },   // 1–5
+    symptoms: { type: Type.ARRAY, items: { type: Type.STRING } },
+    causes: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING },
+          pct: { type: Type.INTEGER }           // 0–100
+        },
+        required: ['name', 'pct']
+      }
+    },
+    qualityScore: {
+      type: Type.OBJECT,
+      properties: {
+        shapeConsistency: { type: Type.INTEGER },   // 1–5
+        sizeConsistency: { type: Type.INTEGER },     // 1–5
+        dispensingPosition: { type: Type.INTEGER },  // 1–5
+        defectRisk: { type: Type.INTEGER },          // 1–5
+        overall: { type: Type.INTEGER }              // 0–100
+      },
+      required: ['shapeConsistency', 'sizeConsistency', 'dispensingPosition', 'defectRisk', 'overall']
+    },
+    reasoning: { type: Type.STRING },
+    actionPlan: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          step: { type: Type.STRING },
+          detail: { type: Type.STRING }
+        },
+        required: ['step', 'detail']
+      }
+    }
+  },
+  required: ['defect', 'confidenceScore', 'symptoms', 'causes', 'qualityScore', 'reasoning', 'actionPlan']
+};
 
 // --- AI DIAGNOSTIC ENDPOINT ---
 app.post('/api/analyze', async (req, res) => {
@@ -74,30 +121,14 @@ Analyze the user diagnostics against our database.
 ${strictMode ? 'CRITICAL QUALITY CONTROL OVERRIDE: Penalize quality indices drastically for discrepancies.' : 'Apply conventional physical manufacturing error margins.'}
 Determine the statistical likelihood of root causes. You MUST explain the exact logic of WHY the top item is prioritized based on symptom timing metrics.
 
-You must return ONLY a raw JSON object matching this structural definition template precisely (do not wrap in markdown tags):
-    {
-      "defect": "Identified Defect Name",
-      "confidenceScore": 4,
-      "symptoms": ["Symptom match sentence 1", "Symptom match sentence 2"],
-      "causes": [
-        {"name": "Air Bubble", "pct": 85},
-        {"name": "Nozzle Blockage", "pct": 70}
-      ],
-      "qualityScore": {
-        "shapeConsistency": 4,
-        "sizeConsistency": 3,
-        "dispensingPosition": 5,
-        "defectRisk": 2,
-        "overall": 78
-      },
-      "reasoning": "Detailed, context-aware logical justification paragraph.",
-      "actionPlan": [
-        {"step": "Title of step 1", "detail": "Detailed specific instruction for step 1"},
-        {"step": "Title of step 2", "detail": "Detailed specific instruction for step 2"},
-        {"step": "Title of step 3", "detail": "Detailed specific instruction for step 3"}
-      ]
-    }
-    `;
+Populate every field of the required structure:
+- "defect": the single identified defect name.
+- "confidenceScore": your confidence in that defect, an integer 1–5.
+- "symptoms": the operator-reported symptoms that match this defect.
+- "causes": ranked probable root causes, each with a "pct" likelihood 0–100 (highest first).
+- "qualityScore": ratings for shapeConsistency, sizeConsistency, dispensingPosition and defectRisk as integers 1–5, plus an "overall" score 0–100.
+- "reasoning": a context-aware paragraph justifying why the top cause ranks highest.
+- "actionPlan": ordered troubleshooting steps, each with a short "step" title and a specific "detail".`;
 
     // Pack text prompt context
     const contentParts = [{ text: promptText }];
@@ -120,6 +151,10 @@ You must return ONLY a raw JSON object matching this structural definition templ
         chatResponse = await ai.models.generateContent({
           model: 'gemini-3.6-flash',
           contents: contentParts,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: DIAGNOSIS_SCHEMA,
+          },
         });
         break; // If successful, break out of the retry loop
       } catch (inferenceError) {
@@ -132,13 +167,10 @@ You must return ONLY a raw JSON object matching this structural definition templ
       }
     }
 
-    // --- STEP 5: Clean, Parse, and Return the Result ---
-    let rawOutputText = chatResponse.text.trim();
-
-    // Safety clean format if the model accidentally slips markdown wrapper strings in
-    rawOutputText = rawOutputText.replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
-
-    const parsedDiagnosticResult = JSON.parse(rawOutputText);
+    // --- STEP 5: Parse and Return the Result ---
+    // The responseSchema guarantees chatResponse.text is valid JSON in the shape above,
+    // so no markdown-stripping is needed and JSON.parse will not throw on formatting.
+    const parsedDiagnosticResult = JSON.parse(chatResponse.text);
 
     // Add the real-time database hits directly to the return payload so the frontend can populate insights
     res.json({
