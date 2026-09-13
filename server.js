@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import 'dotenv/config';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createClient } from '@supabase/supabase-js';
+import rateLimit from 'express-rate-limit';
 
 // ES Module equivalent for __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -72,8 +73,18 @@ const DIAGNOSIS_SCHEMA = {
   required: ['defect', 'confidenceScore', 'symptoms', 'causes', 'qualityScore', 'reasoning', 'actionPlan']
 };
 
+// Each request costs a real Gemini embedding + generation call, so cap how often
+// one client can hit this endpoint to avoid runaway API spend if the URL goes public.
+const analyzeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many analysis requests — please wait a moment and try again.' }
+});
+
 // --- AI DIAGNOSTIC ENDPOINT ---
-app.post('/api/analyze', async (req, res) => {
+app.post('/api/analyze', analyzeLimiter, async (req, res) => {
   try {
     const { problem, answers, imageUrl, strictMode } = req.body;
 
@@ -106,6 +117,12 @@ app.post('/api/analyze', async (req, res) => {
       ? matchedCases.map(c => `- Past Confirmed Defect: ${c.defect_type}\n  Symptoms: ${c.symptoms}\n  Root Cause: ${c.root_cause}\n  Resolution: ${c.resolution}`).join('\n\n')
       : "No exact matching past records found. Reference standard manufacturing baseline tolerances.";
 
+    // Below this, the closest historical match is too weak to trust as grounding —
+    // the model should say so instead of confidently forcing the input into a known category.
+    const LOW_SIMILARITY_THRESHOLD = 0.7;
+    const topSimilarity = matchedCases && matchedCases.length > 0 ? matchedCases[0].similarity : 0;
+    const isLowConfidenceRetrieval = topSimilarity < LOW_SIMILARITY_THRESHOLD;
+
     // 3. Construct the Prompts for Multimodal Gemini Inference Engine
     let promptText = `You are a professional industrial automated technician troubleshooting assistant specializing in fluid dispensing defects.
 
@@ -117,8 +134,9 @@ ${historicalContext}
 - Structured Diagnostic Answers: ${JSON.stringify(answers)}
 
 ### REASONING ENGINE INSTRUCTIONS:
-Analyze the user diagnostics against our database. 
+Analyze the user diagnostics against our database.
 ${strictMode ? 'CRITICAL QUALITY CONTROL OVERRIDE: Penalize quality indices drastically for discrepancies.' : 'Apply conventional physical manufacturing error margins.'}
+${isLowConfidenceRetrieval ? `LOW-CONFIDENCE RETRIEVAL WARNING: The closest historical case matched at only ${(topSimilarity * 100).toFixed(0)}% similarity, below our ${(LOW_SIMILARITY_THRESHOLD * 100).toFixed(0)}% confident-match bar. This may describe a defect outside our fluid-dispensing knowledge base entirely (e.g. a soldering, reflow, or component-placement issue rather than a dispensing issue) — do not force-fit it into one of the historical categories with high confidence. Cap "confidenceScore" at 2 or below unless the evidence is truly unambiguous, and explicitly say in "reasoning" that this case doesn't closely match known dispensing defects.` : ''}
 Determine the statistical likelihood of root causes. You MUST explain the exact logic of WHY the top item is prioritized based on symptom timing metrics.
 
 Populate every field of the required structure:
@@ -154,6 +172,10 @@ Populate every field of the required structure:
           config: {
             responseMimeType: 'application/json',
             responseSchema: DIAGNOSIS_SCHEMA,
+            // Low temperature keeps diagnoses repeatable across near-identical inputs
+            // (default temperature produced visibly different confidence scores/wording
+            // for the same case on repeated calls during testing).
+            temperature: 0.25,
           },
         });
         break; // If successful, break out of the retry loop
@@ -171,6 +193,13 @@ Populate every field of the required structure:
     // The responseSchema guarantees chatResponse.text is valid JSON in the shape above,
     // so no markdown-stripping is needed and JSON.parse will not throw on formatting.
     const parsedDiagnosticResult = JSON.parse(chatResponse.text);
+
+    // Backstop in case the model doesn't follow the prompt's confidence-cap instruction —
+    // don't rely solely on prompt compliance for something the UI treats as a hard signal.
+    if (isLowConfidenceRetrieval && parsedDiagnosticResult.confidenceScore > 2) {
+      parsedDiagnosticResult.confidenceScore = 2;
+      parsedDiagnosticResult.reasoning = `[Low-confidence match: the closest known historical case was only ${(topSimilarity * 100).toFixed(0)}% similar, so this may be a defect type outside our dispensing knowledge base — treat the diagnosis below as a best-effort guess.] ${parsedDiagnosticResult.reasoning}`;
+    }
 
     // Add the real-time database hits directly to the return payload so the frontend can populate insights
     res.json({

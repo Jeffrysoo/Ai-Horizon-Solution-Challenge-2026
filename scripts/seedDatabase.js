@@ -99,6 +99,48 @@ const bulkData = [
         "symptoms": "Component pins shift after curing. Solder enters under the pad during reflow.",
         "cause": "Uneven adhesive application or excessive glue pushing the component.",
         "resolution": "Adjust dispensing pressure and carefully calibrate the dispensing amount for consistent Z-height."
+    },
+    {
+        "defect": "Undersized Dispensing Dots",
+        "symptoms": "Dots are consistently smaller than the target diameter across every shot. Coverage area looks thin or starved.",
+        "cause": "Dispensing pressure or dwell time set too low for the current material viscosity.",
+        "resolution": "Increase dispense pressure or shot time incrementally and re-measure dot diameter. Confirm material viscosity matches the process spec for the current batch."
+    },
+    {
+        "defect": "Oversized Dispensing Dots",
+        "symptoms": "Dots are consistently larger than the target diameter across every shot, though shape stays round and centered.",
+        "cause": "Dispense time or pressure set too high, causing excess material volume per shot.",
+        "resolution": "Reduce dispense time or pressure incrementally and re-measure. Verify the valve closes fully between shots to rule out a stuck-open condition."
+    },
+    {
+        "defect": "Irregular Dot Shape",
+        "symptoms": "Dots come out asymmetric, teardrop-shaped, or with a ragged edge instead of a clean circle, even though volume looks roughly correct.",
+        "cause": "Worn, chipped, or partially clogged nozzle tip distorting the fluid stream as it exits.",
+        "resolution": "Inspect the nozzle tip under magnification for wear, burrs, or partial blockage. Replace the tip and re-run a test pattern."
+    },
+    {
+        "defect": "Dot Misalignment",
+        "symptoms": "Dots land consistently offset from the target pad position, or drift further off-center the longer the run continues.",
+        "cause": "X/Y calibration drift, a bent or loose dispensing needle, or an uncalibrated vision/fiducial alignment system.",
+        "resolution": "Re-run X/Y calibration against a known fiducial. Check the needle for physical bending and confirm it is seated straight and tight in its mount."
+    },
+    {
+        "defect": "Nozzle Drooling / Post-Dispense Ooze",
+        "symptoms": "Small unwanted deposits or thin trails of material appear between intended dispense points, even where no shot was commanded.",
+        "cause": "Valve seal wear or residual line pressure lets material continue seeping from the nozzle tip after the dispense cycle ends.",
+        "resolution": "Inspect and replace the valve seal/seat if worn. Add a small vacuum suck-back setting after each shot to relieve residual pressure at the tip."
+    },
+    {
+        "defect": "Voids or Air Bubbles in Cured Material",
+        "symptoms": "Small craters, pinholes, or visible bubble pockets appear inside the dispensed material after curing, even though the dot looked normal freshly dispensed.",
+        "cause": "Insufficient degassing of the material before dispensing, or air entrained during mixing/loading into the syringe.",
+        "resolution": "Degas the material under vacuum before loading. Check syringe loading procedure for air entrainment and consider a slower fill/load speed."
+    },
+    {
+        "defect": "Under-Cured / Tacky Residue",
+        "symptoms": "Dispensed material looks dimensionally correct but stays soft or tacky to the touch well after the expected cure time.",
+        "cause": "Cure oven/UV station temperature or exposure time below spec, or an expired/incorrectly mixed two-part material.",
+        "resolution": "Verify cure station temperature and dwell time against the material datasheet. Check material pot life and mix ratio if using a two-part system."
     }
 ];
 

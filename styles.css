@@ -65,15 +65,30 @@
 [data-theme="dark"] .cause-bar { background: #121212; border-color: var(--color-divider); }
 [data-theme="dark"] .btn-secondary { background: #1a1a1a; color: #fff; }
 [data-theme="dark"] .btn-secondary:hover { background: #333; }
+[data-theme="dark"] .why-box {
+  background: color-mix(in srgb, var(--color-accent) 18%, #121212);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
+[data-theme="dark"] .why-box .lbl { color: var(--color-accent-300); }
+[data-theme="dark"] .conf-high {
+  background: color-mix(in srgb, var(--color-accent) 22%, #121212);
+  color: var(--color-accent-300);
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
-  background: var(--color-bg);
+  background-color: var(--color-bg);
+  background-image: radial-gradient(ellipse 900px 460px at 50% -8%, color-mix(in srgb, var(--color-accent) 12%, transparent), transparent 70%);
+  background-repeat: no-repeat;
   color: var(--color-text);
   font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.55;
+}
+[data-theme="dark"] body {
+  background-image: radial-gradient(ellipse 900px 460px at 50% -8%, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent 70%);
 }
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-heading); font-weight: 600;
@@ -315,6 +330,8 @@ textarea.input { resize: vertical; font-family: var(--font-body); line-height: 1
 
 /* ── problem input ──────────────────────────────────────────────────── */
 
+.input-card { gap: var(--space-4); }
+
 .dropzone {
   border: 1px dashed var(--color-neutral-500); background: transparent;
   padding: var(--space-8); display: flex; flex-direction: column; align-items: center;
@@ -383,11 +400,12 @@ textarea.input { resize: vertical; font-family: var(--font-body); line-height: 1
 .defect-card .head-row { display: flex; align-items: center; justify-content: space-between; }
 .defect-card .head-row .card-kicker { margin: 0; }
 .defect-name { font-family: var(--font-heading); font-weight: 600; font-size: 34px; line-height: 1.1; letter-spacing: 0.02em; }
-.conf-high { background: oklch(0.95 0.035 75); color: var(--warn-text); border: 1px solid var(--warn-border); }
-.stars-row { display: flex; align-items: center; gap: var(--space-2); font-size: 22px; letter-spacing: 2px; }
-.stars-on { color: var(--color-accent-600); }
-.stars-off { color: var(--color-neutral-400); margin-left: -8px; }
+.conf-high { background: var(--color-accent-100); color: var(--color-accent-800); border: 1px solid var(--color-accent-300); }
+.stars-row { display: flex; align-items: center; gap: var(--space-2); }
 .stars-row .lbl { font-size: 13px; letter-spacing: 0; color: var(--color-neutral-600); }
+.star-icon { display: inline-block; vertical-align: middle; color: var(--color-neutral-400); }
+.star-icon.filled { color: var(--color-accent-600); }
+.star-icon + .star-icon { margin-left: 1px; }
 .symptoms { border-top: 1px solid var(--color-divider); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .symptoms ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.4; }
 
@@ -397,8 +415,8 @@ textarea.input { resize: vertical; font-family: var(--font-body); line-height: 1
 .insight-card p { margin: 0; font-size: 14px; line-height: 1.5; }
 .insight-card a { font-size: 13px; }
 
-.quality-row { display: flex; align-items: baseline; justify-content: space-between; font-size: 13px; }
-.quality-row .stars { letter-spacing: 2px; }
+.quality-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.quality-row .stars { display: inline-flex; align-items: center; }
 .quality-total { border-top: 1px solid var(--color-divider); padding-top: var(--space-2); display: flex; justify-content: space-between; font-size: 14px; }
 .quality-total span { letter-spacing: 0.06em; text-transform: uppercase; }
 .quality-total strong { font-family: var(--font-heading); font-size: 18px; }
@@ -410,16 +428,16 @@ textarea.input { resize: vertical; font-family: var(--font-body); line-height: 1
 .cause-row.top .name { font-weight: 600; }
 .cause-bar { height: 14px; border: 1px solid var(--color-divider); position: relative; border-radius: 999px; background: #fff; }
 .cause-bar i { position: absolute; inset: 2px auto 2px 2px; background: var(--color-accent-500); border-radius: 999px; }
-.cause-row.top .cause-bar i { background: var(--warn); }
+.cause-row.top .cause-bar i { background: var(--color-accent-800); }
 .cause-row .pct { font-family: var(--font-heading); font-weight: 600; font-size: 17px; text-align: right; }
 
 .why-box {
-  border: 1px solid var(--warn-border); background: var(--warn-bg);
+  border: 1px solid var(--color-accent-300); background: var(--color-accent-100);
   padding: var(--space-3) var(--space-4); display: flex; gap: var(--space-3); border-radius: 12px;
 }
 .why-box svg { flex-shrink: 0; margin-top: 2px; }
 .why-box .inner { display: flex; flex-direction: column; gap: 4px; }
-.why-box .lbl { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--warn-text); }
+.why-box .lbl { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-accent-800); }
 .why-box p { margin: 0; font-size: 14px; line-height: 1.55; }
 
 .plan-card { gap: var(--space-3); }
@@ -459,7 +477,7 @@ textarea.input { resize: vertical; font-family: var(--font-body); line-height: 1
 .report-2col { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); border-top: 1px solid var(--color-divider); padding-top: var(--space-3); }
 .report-2col > div { display: flex; flex-direction: column; gap: 4px; }
 .report-2col .val { font-family: var(--font-heading); font-weight: 600; font-size: 22px; }
-.report-2col .stars-line { font-size: 18px; letter-spacing: 2px; }
+.report-2col .stars-line { display: inline-flex; align-items: center; gap: var(--space-2); }
 .report-2col .stars-line .lbl { font-size: 13px; letter-spacing: 0; color: var(--color-neutral-600); }
 .report-qa-row {
   display: grid; grid-template-columns: 1fr 220px; gap: var(--space-3);

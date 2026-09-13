@@ -80,7 +80,13 @@ function esc(s) {
 const ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
 
 /* ── derived values ───────────────────────────────────────────────── */
-function stars(on) { return '★'.repeat(on) + '</span><span class="stars-off">' + '☆'.repeat(5 - on); }
+const STAR_PATH = 'M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.6l-5.9 3 1.3-6.6-4.9-4.6 6.6-.8z';
+function starIcon(filled, size) {
+  return `<svg class="star-icon${filled ? ' filled' : ''}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="${filled ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="${STAR_PATH}"></path></svg>`;
+}
+function stars(on, size = 18) {
+  return Array.from({ length: 5 }, (_, i) => starIcon(i < on, size)).join('');
+}
 
 function reasoning() {
   const timing = state.answers.timing || '';
@@ -271,14 +277,16 @@ function inputHTML() {
       <span class="kicker">Step 01 · Problem discovery</span>
       <h2 class="screen-title">Describe the problem</h2>
     </div>
-    <div class="field">
-      <label for="diq-problem">Describe the dispensing problem you're seeing</label>
-      <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
-    </div>
-    <div class="field">
-      <span class="field-label">Photo of the dispensing result <span class="opt">(optional)</span></span>
-      ${imageBlock}
-      <input type="file" id="diq-file" accept="image/*" style="display: none;">
+    <div class="card input-card">
+      <div class="field">
+        <label for="diq-problem">Describe the dispensing problem you're seeing</label>
+        <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
+      </div>
+      <div class="field">
+        <span class="field-label">Photo of the dispensing result <span class="opt">(optional)</span></span>
+        ${imageBlock}
+        <input type="file" id="diq-file" accept="image/*" style="display: none;">
+      </div>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-primary" data-action="continue-qa">Continue${ARROW}</button>
@@ -402,7 +410,7 @@ function resultsHTML() {
   const quality = CONFIG.showQualityScore ? `
     <div class="card">
       <div class="card-kicker">Dispensing quality assessment</div>
-      ${qual.map(x => `<div class="quality-row"><span>${x.label}</span><span class="stars"><span class="stars-on">${stars(x.v)}</span></span></div>`).join('')}
+      ${qual.map(x => `<div class="quality-row"><span>${x.label}</span><span class="stars">${stars(x.v, 14)}</span></div>`).join('')}
       <div class="quality-total"><span>Overall quality</span><strong>${qs.overall || 78} / 100</strong></div>
     </div>` : '';
 
@@ -458,7 +466,7 @@ function resultsHTML() {
         </div>
         <div class="defect-name">${esc(aiDefect)}</div>
         <div class="stars-row">
-          <span class="stars-on">${stars(c)}</span>
+          ${stars(c, 20)}
           <span class="lbl">Confidence ${c} / 5</span>
         </div>
         <div class="symptoms">
@@ -474,7 +482,7 @@ function resultsHTML() {
       <div class="card-kicker">Why · Ranked probable causes</div>
       <div class="cause-list">${causesHTML}</div>
       <div class="why-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-icon)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-700)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
         <div class="inner">
           <span class="lbl">Why ${esc((aiCausesList[0]?.name || 'this cause').toLowerCase())} ranks highest</span>
           <p>${esc(aiReasoning)}</p>
@@ -527,7 +535,7 @@ function reportHTML() {
         </div>
         <div>
           <span class="kicker">Confidence score</span>
-          <span class="stars-line"><span class="stars-on">${stars(c)}</span> <span class="lbl">${c} / 5 · ${confLabel}</span></span>
+          <span class="stars-line">${stars(c, 15)} <span class="lbl">${c} / 5 · ${confLabel}</span></span>
         </div>
       </div>
       <div class="report-sec">
