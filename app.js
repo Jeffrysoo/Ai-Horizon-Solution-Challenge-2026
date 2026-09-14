@@ -31,28 +31,19 @@ const PLAN = [
   { title: 'Check whether the material condition has changed', detail: 'Confirm batch age, storage temperature and pot life against spec.' },
   { title: 'Perform several test shots and compare results', detail: 'Run 10 test dots on scrap and measure diameter spread before restarting production.' }
 ];
-const HISTORY = [
-  { id: 'DQ-0146', date: '2026-08-02', defect: 'Inconsistent volume', cause: 'Air trapped in syringe', material: 'Epoxy', outcome: 'Resolved' },
-  { id: 'DQ-0145', date: '2026-07-28', defect: 'Missing dots', cause: 'Nozzle blockage', material: 'Solder paste', outcome: 'Resolved' },
-  { id: 'DQ-0144', date: '2026-07-21', defect: 'Excessive spreading', cause: 'Viscosity drop (temp)', material: 'Adhesive', outcome: 'Resolved' },
-  { id: 'DQ-0142', date: '2026-07-15', defect: 'Inconsistent volume', cause: 'Air trapped in syringe', material: 'Adhesive', outcome: 'Resolved' },
-  { id: 'DQ-0139', date: '2026-07-03', defect: 'Undersized dots', cause: 'Pressure set too low', material: 'Sealant', outcome: 'Resolved' },
-  { id: 'DQ-0137', date: '2026-06-24', defect: 'Inconsistent volume', cause: 'Air trapped in syringe', material: 'Solder paste', outcome: 'Resolved' },
-  { id: 'DQ-0135', date: '2026-06-18', defect: 'Irregular shape', cause: 'Worn nozzle tip', material: 'Epoxy', outcome: 'Monitoring' },
-  { id: 'DQ-0132', date: '2026-06-05', defect: 'Oversized dots', cause: 'Dispense time too long', material: 'Adhesive', outcome: 'Resolved' },
-  { id: 'DQ-0129', date: '2026-05-27', defect: 'Inconsistent volume', cause: 'Material batch variation', material: 'Epoxy', outcome: 'Resolved' },
-  { id: 'DQ-0126', date: '2026-05-14', defect: 'Missing dots', cause: 'Air trapped in syringe', material: 'Adhesive', outcome: 'Resolved' }
-];
-
 /* ── state ────────────────────────────────────────────────────────── */
 const state = {
   screen: 'landing',   // landing | input | qa | analyzing | results | report | history
   maxStage: -1,        // highest unlocked nav stage (0..3)
   problem: '',
   imageUrl: null,
-  apiKey: '', // DO NOT HARDCODE API KEYS IN PUBLIC REPOSITORIES
   aiResult: null,
+  matchedCases: null,  // knowledge-base hits returned with the last LIVE analysis
+  retrieval: null,     // similarity / count metadata returned with the last LIVE analysis
   analysisError: null, // set when a LIVE analysis fails, so results shows an error instead of mock data
+  cases: null,         // full knowledge base, loaded on demand for the Case history screen
+  casesError: null,
+  casesLoading: false,
   questions: QBASE.slice(),
   qaIdx: 0,
   answers: {},
@@ -64,11 +55,14 @@ const state = {
   strictMode: false
 };
 
-// Case ID / date are regenerated per diagnosis (see startDiagnosis) so each report is
-// distinct. Sequence continues from the newest case in HISTORY (DQ-0146).
-let caseSeq = 146;
-function nextCaseId() { return 'DQ-' + String(++caseSeq).padStart(4, '0'); }
-let CASE_ID = 'DQ-0147'; // placeholder; startDiagnosis assigns the real one (first run = DQ-0147)
+// Report IDs are generated per diagnosis (date + per-session sequence); startDiagnosis assigns them.
+let caseSeq = 0;
+function nextCaseId() {
+  const d = new Date();
+  const ymd = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  return `DQ-${ymd}-${String(++caseSeq).padStart(2, '0')}`;
+}
+let CASE_ID = '';
 let REPORT_DATE = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
 const app = document.getElementById('app');
@@ -76,8 +70,13 @@ const app = document.getElementById('app');
 function esc(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
+function lcFirst(s) { s = String(s || ''); return s.charAt(0).toLowerCase() + s.slice(1); }
+function severityTag(sev) { return sev === 'high' ? 'tag-warn' : sev === 'medium' ? 'tag-accent' : 'tag-neutral'; }
 
 const ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>';
+const EV_UP = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>';
+const EV_DOWN = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>';
+const WARN_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-icon)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>';
 
 /* ── derived values ───────────────────────────────────────────────── */
 const STAR_PATH = 'M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.6l-5.9 3 1.3-6.6-4.9-4.6 6.6-.8z';
@@ -109,8 +108,8 @@ function setScreen(screen, stage) {
 
 function startDiagnosis() {
   Object.assign(state, {
-    problem: '', imageUrl: null, aiResult: null, analysisError: null, questions: QBASE.slice(), qaIdx: 0,
-    answers: {}, done: {}, notes: ''
+    problem: '', imageUrl: null, aiResult: null, matchedCases: null, retrieval: null, analysisError: null,
+    questions: QBASE.slice(), qaIdx: 0, answers: {}, done: {}, notes: ''
   });
   // Fresh case identity for this diagnosis so every generated report is distinct.
   CASE_ID = nextCaseId();
@@ -145,10 +144,13 @@ async function analyzeWithGemini() {
     const data = await res.json();
     state.aiResult = data.aiResult;
     state.matchedCases = data.matchedCases; // Save the real history hits to state
+    state.retrieval = data.retrieval || null;
 
   } catch (err) {
     console.error("Diagnostic Error:", err);
     state.aiResult = null;
+    state.matchedCases = null;
+    state.retrieval = null;
     // Record the failure so the results screen shows an honest error instead of
     // silently rendering the hardcoded placeholder diagnosis as if it were real.
     state.analysisError = err.message || 'The analysis service did not respond.';
@@ -344,12 +346,12 @@ function causeRows() {
     </div>`).join('');
 }
 
-function planRows() {
-  return PLAN.map((p, i) =>
+function planRows(items) {
+  return items.map((p, i) =>
     `<div class="plan-row${state.done[i] ? ' done' : ''}" data-action="toggle-plan" data-idx="${i}">
       <span class="n">${String(i + 1).padStart(2, '0')}</span>
       <span class="check">${state.done[i] ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>' : ''}</span>
-      <div class="txt"><b>${p.title}</b><span>${p.detail}</span></div>
+      <div class="txt"><b>${esc(p.step || p.title)}</b><span>${esc(p.detail)}</span></div>
     </div>`).join('');
 }
 
@@ -382,18 +384,43 @@ function resultsHTML() {
   const aiDefect = state.aiResult ? state.aiResult.defect : 'Inconsistent Dispensing Volume';
   const c = state.aiResult ? state.aiResult.confidenceScore : 4;
   const confLabel = c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence';
-  const confTag = c >= 4
-    ? '<span class="tag conf-high">High confidence</span>'
-    : `<span class="tag tag-neutral">${confLabel}</span>`;
+  const retrieval = state.aiResult ? state.retrieval : null;
+  const lowConf = Boolean(retrieval && retrieval.lowConfidence);
+  const confTag = lowConf
+    ? '<span class="tag tag-warn">Low confidence · outside known patterns</span>'
+    : c >= 4
+      ? '<span class="tag conf-high">High confidence</span>'
+      : `<span class="tag tag-neutral">${confLabel}</span>`;
+  const caveat = lowConf ? `
+        <div class="caveat-box">
+          ${WARN_ICON}
+          <div>
+            <b>This may not be a dispensing defect we have on record.</b>
+            <span>The closest confirmed case is only ${Math.round(retrieval.topSimilarity * 100)}% similar (our bar is ${Math.round(retrieval.threshold * 100)}%), so confidence has been capped. Treat the diagnosis below as a best-effort guess and confirm it with an engineer.</span>
+          </div>
+        </div>` : '';
 
-  const matchCount = state.matchedCases ? state.matchedCases.length : 0;
-
-  const similar = CONFIG.showSimilarInsight && matchCount > 0 ? `
+  const topMatch = state.matchedCases && state.matchedCases.length > 0 ? state.matchedCases[0] : null;
+  const sameCount = retrieval ? retrieval.sameDefectCount : 0;
+  const totalCount = retrieval ? retrieval.totalCases : 0;
+  const similar = CONFIG.showSimilarInsight && topMatch ? `
     <div class="card insight-card">
-      <div class="card-kicker">From case history</div>
-      <div class="big-n"><b>${matchCount}×</b><span>similar problems recorded</span></div>
-      <p>The closest historical match was <strong>${esc(state.matchedCases[0].defect_type)}</strong> caused by ${esc(state.matchedCases[0].root_cause.toLowerCase())}.</p>
-      <a href="#" data-action="go-history">View case history →</a>
+      <div class="card-kicker">From the knowledge base</div>
+      <div class="big-n"><b>${sameCount}</b><span>confirmed case${sameCount === 1 ? '' : 's'} of <strong>${esc(topMatch.defect_type)}</strong> · ${totalCount} in total</span></div>
+      <p>Closest match${typeof topMatch.similarity === 'number' ? ` (${Math.round(topMatch.similarity * 100)}% similar)` : ''} was caused by ${esc(lcFirst(topMatch.root_cause))}</p>
+      <a href="#" data-action="go-history">Browse the knowledge base →</a>
+    </div>` : '';
+
+  const findings = state.aiResult && Array.isArray(state.aiResult.imageFindings) ? state.aiResult.imageFindings : [];
+  const vision = state.imageUrl && findings.length > 0 ? `
+    <div class="card vision-card">
+      <div class="card-kicker">What the AI saw in your photo</div>
+      <div class="vision-body">
+        <span class="thumb"><img src="${state.imageUrl}" alt="Uploaded dispensing result"></span>
+        <ul class="findings">
+          ${findings.map(f => `<li><span class="tag ${severityTag(f.severity)}">${esc(f.finding || 'Finding')}</span><span class="detail">${esc(f.detail || '')}</span></li>`).join('')}
+        </ul>
+      </div>
     </div>` : '';
 
   const qs = state.aiResult && state.aiResult.qualityScore ? state.aiResult.qualityScore : {
@@ -425,33 +452,24 @@ function resultsHTML() {
   const aiCausesList = state.aiResult && Array.isArray(state.aiResult.causes) && state.aiResult.causes.length > 0 ? state.aiResult.causes : CAUSES;
   const aiReasoning = state.aiResult && state.aiResult.reasoning ? state.aiResult.reasoning : reasoning();
 
-  const causesHTML = aiCausesList.map((cause, i) =>
-    `<div class="cause-row${i === 0 ? ' top' : ''}">
+  const causesHTML = aiCausesList.map((cause, i) => {
+    const evidence = Array.isArray(cause.evidence) ? cause.evidence : [];
+    const evidenceHTML = evidence.length ? `
+      <div class="cause-evidence">
+        ${evidence.map(e => `<span class="ev ${e.effect === 'weakens' ? 'ev-down' : 'ev-up'}">${e.effect === 'weakens' ? EV_DOWN : EV_UP}<b>${esc(e.answer || '')}</b>${e.note ? `<span class="note">— ${esc(e.note)}</span>` : ''}</span>`).join('')}
+      </div>` : '';
+    return `<div class="cause-row${i === 0 ? ' top' : ''}">
       <span class="name">${esc(cause.name || 'Unknown cause')}</span>
       <div class="cause-bar"><i style="width: ${cause.pct || 0}%;"></i></div>
       <span class="pct">${cause.pct || 0}%</span>
-    </div>`).join('');
+      ${evidenceHTML}
+    </div>`;
+  }).join('');
 
-  // --- NEW: Generate the Dynamic Action Plan HTML ---
-  // Safely grab the action plan from the AI result, or default to an empty array
-  const aiActionPlan = state.aiResult?.actionPlan || [];
-
-  // Map over the AI's steps. (If the AI fails to generate it, fallback to your old planRows())
-  const dynamicPlanHTML = aiActionPlan.length > 0 ? aiActionPlan.map((item, index) => `
-    <div class="plan-row" style="display: flex; align-items: flex-start; padding: 16px 0; border-bottom: 1px solid var(--border-light, #eee);">
-      <div style="font-size: 1.25rem; font-weight: bold; color: var(--text-muted, #a0aec0); width: 40px; line-height: 1.2;">
-        ${String(index + 1).padStart(2, '0')}
-      </div>
-      <label class="check-box" style="margin-right: 16px; margin-top: 2px; cursor: pointer;">
-        <input type="checkbox" style="accent-color: var(--primary);">
-      </label>
-      <div style="flex: 1;">
-        <div style="font-weight: 700; color: var(--text-main, #2d3748); margin-bottom: 4px;">${esc(item.step)}</div>
-        <div style="color: var(--text-muted, #718096); font-size: 0.9rem; line-height: 1.4;">${esc(item.detail)}</div>
-      </div>
-    </div>
-  `).join('') : planRows();
-  // ------------------------------------------------
+  const aiActionPlan = state.aiResult && Array.isArray(state.aiResult.actionPlan) && state.aiResult.actionPlan.length > 0
+    ? state.aiResult.actionPlan
+    : PLAN;
+  const planHTML = planRows(aiActionPlan);
 
   return `<main class="screen-wide" data-screen="results">
     <div class="results-head">
@@ -459,6 +477,7 @@ function resultsHTML() {
       <span class="meta">Case ${CASE_ID} · ${REPORT_DATE}</span>
     </div>
     <div class="results-grid">
+      <div class="side">
       <div class="card defect-card">
         <div class="head-row">
           <div class="card-kicker">What's wrong · Identified defect</div>
@@ -469,12 +488,15 @@ function resultsHTML() {
           ${stars(c, 20)}
           <span class="lbl">Confidence ${c} / 5</span>
         </div>
+        ${caveat}
         <div class="symptoms">
           <span class="kicker">Matching symptoms</span>
           <ul>
             ${aiSymptoms}
           </ul>
         </div>
+      </div>
+      ${vision}
       </div>
       <div class="side">${similar}${quality}</div>
     </div>
@@ -491,8 +513,7 @@ function resultsHTML() {
     </div>
     <div class="card plan-card">
       <div class="card-kicker">What to do next · Recommended action plan</div>
-      <!-- NEW: Replaced planRows() with dynamicPlanHTML -->
-      <div class="plan-list">${dynamicPlanHTML}</div>
+      <div class="plan-list">${planHTML}</div>
       <div class="btn-row">
         <button type="button" class="btn btn-primary" data-action="to-report">Generate report${ARROW}</button>
         <button type="button" class="btn btn-ghost" data-action="start-diagnosis">Start over</button>
@@ -514,6 +535,9 @@ function reportHTML() {
 
   // NEW: Grab the dynamic action plan from the AI, or fallback to the hardcoded PLAN
   const aiActionPlan = state.aiResult && state.aiResult.actionPlan ? state.aiResult.actionPlan : PLAN;
+  const retrieval = state.aiResult ? state.retrieval : null;
+  const lowConf = Boolean(retrieval && retrieval.lowConfidence);
+  const findings = state.aiResult && Array.isArray(state.aiResult.imageFindings) ? state.aiResult.imageFindings : [];
 
   return `<main class="screen-report" data-screen="report">
     <div class="card report-card">
@@ -551,7 +575,12 @@ function reportHTML() {
           <tbody>${aiCausesList.map(x => `<tr><td>${esc(x.name)}</td><td class="pct">${x.pct}%</td></tr>`).join('')}</tbody>
         </table>
         <p class="reasoning"><strong>AI reasoning:</strong> ${esc(aiReasoning)}</p>
+        ${lowConf ? `<p class="reasoning caveat"><strong>Confidence note:</strong> the closest confirmed case in the knowledge base was only ${Math.round(retrieval.topSimilarity * 100)}% similar, so this diagnosis is a best-effort guess outside known dispensing patterns and should be confirmed by an engineer.</p>` : ''}
       </div>
+      ${findings.length ? `<div class="report-sec">
+        <span class="kicker">Image findings</span>
+        <ul>${findings.map(f => `<li><strong>${esc(f.finding || 'Finding')}</strong> (${esc(f.severity || 'n/a')} severity) — ${esc(f.detail || '')}</li>`).join('')}</ul>
+      </div>` : ''}
       <div class="report-sec">
         <span class="kicker">Recommended troubleshooting sequence</span>
         <!-- NEW: Maps the dynamic aiActionPlan, checking for both .step (AI) and .title (Fallback) -->
@@ -572,23 +601,50 @@ function reportHTML() {
 
 function filteredCases() {
   const term = state.search.trim().toLowerCase();
-  return HISTORY.filter(c => !term || [c.id, c.defect, c.cause, c.material, c.outcome, c.date].join(' ').toLowerCase().includes(term));
+  const rows = state.cases || [];
+  return rows.filter(c => !term || [`#${c.id}`, c.defect_type, c.symptoms, c.root_cause, c.resolution].join(' ').toLowerCase().includes(term));
+}
+
+function historyCountText(shown) {
+  if (!Array.isArray(state.cases)) return state.casesError ? '' : 'Loading the knowledge base…';
+  return `${shown} of ${state.cases.length} confirmed cases shown — this is the knowledge base the AI searches when it reports similar problems.`;
+}
+
+async function loadCases() {
+  if (state.cases || state.casesLoading) return;
+  state.casesLoading = true;
+  state.casesError = null;
+  try {
+    const res = await fetch('/api/cases');
+    if (!res.ok) throw new Error('Could not load the case history');
+    const data = await res.json();
+    state.cases = Array.isArray(data.cases) ? data.cases : [];
+  } catch (err) {
+    console.error('Case history error:', err);
+    state.casesError = err.message || 'Could not load the case history';
+  } finally {
+    state.casesLoading = false;
+  }
+  if (state.screen === 'history') render();
 }
 
 function historyRowsHTML(rows) {
   return rows.map(c =>
     `<tr>
-      <td>${c.id}</td>
-      <td class="date">${c.date}</td>
-      <td>${c.defect}</td>
-      <td>${c.cause}</td>
-      <td>${c.material}</td>
-      <td><span class="tag ${c.outcome === 'Resolved' ? 'tag-accent' : 'tag-neutral'}">${c.outcome}</span></td>
+      <td>#${c.id}</td>
+      <td>${esc(c.defect_type)}</td>
+      <td class="sym">${esc(c.symptoms)}</td>
+      <td>${esc(c.root_cause)}</td>
+      <td>${esc(c.resolution)}</td>
     </tr>`).join('');
 }
 
 function historyHTML() {
   const rows = filteredCases();
+  const loaded = Array.isArray(state.cases);
+  const status = state.casesError
+    ? `<div class="history-empty">${esc(state.casesError)} — is the backend running? <a href="#" data-action="retry-cases">Try again</a></div>`
+    : !loaded ? '<div class="history-empty">Loading confirmed cases…</div>' : '';
   return `<main class="screen-wide" data-screen="history">
     <div class="history-head">
       <div class="l">
@@ -597,17 +653,18 @@ function historyHTML() {
       </div>
       <div class="search-pill">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.3-4.3"></path></svg>
-        <input type="text" id="diq-search" placeholder="Search defect, cause, material…" value="${esc(state.search)}">
+        <input type="text" id="diq-search" placeholder="Search defect, symptom, cause…" value="${esc(state.search)}">
       </div>
     </div>
-    <p class="history-count" id="history-count">${rows.length} of ${HISTORY.length} cases shown — resolved cases feed the "similar problems occurred before" insight on results pages.</p>
-    <table class="table history-table">
+    <p class="history-count" id="history-count">${historyCountText(rows.length)}</p>
+    ${status}
+    <table class="table history-table" ${loaded ? '' : 'hidden'}>
       <thead>
-        <tr><th>Case</th><th>Date</th><th>Defect</th><th>Confirmed cause</th><th>Material</th><th>Outcome</th></tr>
+        <tr><th>Case</th><th>Defect</th><th>Symptoms</th><th>Confirmed cause</th><th>Resolution</th></tr>
       </thead>
       <tbody id="history-body">${historyRowsHTML(rows)}</tbody>
     </table>
-    <div class="history-empty" id="history-empty" ${rows.length ? 'hidden' : ''}>No cases match "<span id="history-term">${esc(state.search)}</span>".</div>
+    <div class="history-empty" id="history-empty" ${loaded && !rows.length ? '' : 'hidden'}>No cases match "<span id="history-term">${esc(state.search)}</span>".</div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" data-action="go-home">Back to start</button>
     </div>
@@ -667,9 +724,6 @@ function wireScreen() {
   const problem = document.getElementById('diq-problem');
   if (problem) problem.addEventListener('input', e => { state.problem = e.target.value; });
 
-  const apikey = document.getElementById('diq-apikey');
-  if (apikey) apikey.addEventListener('input', e => { state.apiKey = e.target.value; });
-
   const notes = document.getElementById('diq-notes');
   if (notes) notes.addEventListener('input', e => { state.notes = e.target.value; });
 
@@ -699,8 +753,7 @@ function wireScreen() {
     state.search = e.target.value;
     const rows = filteredCases();
     document.getElementById('history-body').innerHTML = historyRowsHTML(rows);
-    document.getElementById('history-count').textContent =
-      `${rows.length} of ${HISTORY.length} cases shown — resolved cases feed the "similar problems occurred before" insight on results pages.`;
+    document.getElementById('history-count').textContent = historyCountText(rows.length);
     const empty = document.getElementById('history-empty');
     empty.hidden = rows.length > 0;
     document.getElementById('history-term').textContent = state.search;
@@ -714,7 +767,8 @@ document.addEventListener('click', e => {
   if (el.tagName === 'A') e.preventDefault();
   switch (action) {
     case 'go-home': setScreen('landing'); break;
-    case 'go-history': setScreen('history'); break;
+    case 'go-history': setScreen('history'); loadCases(); break;
+    case 'retry-cases': state.casesError = null; loadCases(); render(); break;
     case 'go-settings': setScreen('settings'); break;
     case 'set-theme': {
       state.theme = el.dataset.value;

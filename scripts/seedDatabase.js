@@ -72,20 +72,20 @@ async function seedDatabase(dataArray) {
 const bulkData = [
     {
         "defect": "Inconsistent Dispensing Volume",
-        "symptoms": "Some dispensing dots are larger, some are smaller. Dispensing results are not repeatable[cite: 2]. Occurs occasionally.",
-        "cause": "Air may be trapped inside the syringe or material supply system[cite: 2].",
+        "symptoms": "Some dispensing dots are larger, some are smaller. Dispensing results are not repeatable. Occurs occasionally.",
+        "cause": "Air may be trapped inside the syringe or material supply system.",
         "resolution": "Purge the syringe and check for visible air bubbles. Verify material degassing process."
     },
     {
         "defect": "Missing Dispensing Dots",
-        "symptoms": "No material comes out of the nozzle during a shot[cite: 2]. Leaves empty pinholes.",
-        "cause": "The dispensing nozzle may be partially or fully blocked[cite: 2].",
+        "symptoms": "No material comes out of the nozzle during a shot. Leaves empty pinholes.",
+        "cause": "The dispensing nozzle may be partially or fully blocked.",
         "resolution": "Remove the nozzle and inspect for blockage. Change to a clean needle and ensure high-quality patch adhesive is used."
     },
     {
         "defect": "Material Spreading",
-        "symptoms": "Material spreads beyond the required area[cite: 2]. Dots are oversized or merge together.",
-        "cause": "The material viscosity may have changed[cite: 2] due to temperature fluctuations, or dispensing pressure is too high.",
+        "symptoms": "Material spreads beyond the required area. Dots are oversized or merge together.",
+        "cause": "The material viscosity may have changed due to temperature fluctuations, or dispensing pressure is too high.",
         "resolution": "Check whether the material condition has changed. Verify batch age and storage temperature. Reduce dispensing pressure."
     },
     {

@@ -41,9 +41,21 @@ const DIAGNOSIS_SCHEMA = {
         type: Type.OBJECT,
         properties: {
           name: { type: Type.STRING },
-          pct: { type: Type.INTEGER }           // 0–100
+          pct: { type: Type.INTEGER },          // 0–100
+          evidence: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                answer: { type: Type.STRING, description: 'The specific operator answer or photo observation, quoted briefly' },
+                effect: { type: Type.STRING, enum: ['supports', 'weakens'] },
+                note: { type: Type.STRING, description: 'One short clause on why this moves the likelihood' }
+              },
+              required: ['answer', 'effect', 'note']
+            }
+          }
         },
-        required: ['name', 'pct']
+        required: ['name', 'pct', 'evidence']
       }
     },
     qualityScore: {
@@ -68,10 +80,32 @@ const DIAGNOSIS_SCHEMA = {
         },
         required: ['step', 'detail']
       }
+    },
+    imageFindings: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          finding: { type: Type.STRING, enum: ['Missing Dot', 'Oversized Dot', 'Undersized Dot', 'Irregular Shape', 'Excessive Spreading', 'Other'] },
+          detail: { type: Type.STRING, description: 'Where in the image it is and what is visible' },
+          severity: { type: Type.STRING, enum: ['low', 'medium', 'high'] }
+        },
+        required: ['finding', 'detail', 'severity']
+      }
     }
   },
-  required: ['defect', 'confidenceScore', 'symptoms', 'causes', 'qualityScore', 'reasoning', 'actionPlan']
+  required: ['defect', 'confidenceScore', 'symptoms', 'causes', 'qualityScore', 'reasoning', 'actionPlan', 'imageFindings']
 };
+
+// Some seed rows carry "[cite: N]" copy-paste artifacts; never show them or prompt with them.
+const stripCiteArtifacts = s => typeof s === 'string' ? s.replace(/\s*\[cite:[^\]]*\]/g, '') : s;
+const cleanCase = c => ({
+  ...c,
+  defect_type: stripCiteArtifacts(c.defect_type),
+  symptoms: stripCiteArtifacts(c.symptoms),
+  root_cause: stripCiteArtifacts(c.root_cause),
+  resolution: stripCiteArtifacts(c.resolution)
+});
 
 // Each request costs a real Gemini embedding + generation call, so cap how often
 // one client can hit this endpoint to avoid runaway API spend if the URL goes public.
@@ -112,16 +146,34 @@ app.post('/api/analyze', analyzeLimiter, async (req, res) => {
 
     if (dbError) throw dbError;
 
+    const cases = (matchedCases || []).map(cleanCase);
+
+    // How many confirmed cases share the top match's defect type — the honest version of
+    // "similar problems occurred N times before" (the vector search itself is capped at 3).
+    let sameDefectCount = 0;
+    let totalCases = 0;
+    const [totalRes, sameRes] = await Promise.all([
+      supabase.from('defect_knowledgebase').select('*', { count: 'exact', head: true }),
+      cases.length
+        ? supabase.from('defect_knowledgebase').select('*', { count: 'exact', head: true }).eq('defect_type', matchedCases[0].defect_type)
+        : Promise.resolve({ count: 0, error: null })
+    ]);
+    totalCases = totalRes.error ? 0 : (totalRes.count || 0);
+    sameDefectCount = sameRes.error
+      ? cases.filter(c => c.defect_type === cases[0].defect_type).length
+      : (sameRes.count || 0);
+
     // Format the database hits to inject cleanly into the model prompt context window
-    const historicalContext = matchedCases && matchedCases.length > 0
-      ? matchedCases.map(c => `- Past Confirmed Defect: ${c.defect_type}\n  Symptoms: ${c.symptoms}\n  Root Cause: ${c.root_cause}\n  Resolution: ${c.resolution}`).join('\n\n')
+    const historicalContext = cases.length > 0
+      ? cases.map(c => `- Past Confirmed Defect: ${c.defect_type}\n  Symptoms: ${c.symptoms}\n  Root Cause: ${c.root_cause}\n  Resolution: ${c.resolution}`).join('\n\n')
       : "No exact matching past records found. Reference standard manufacturing baseline tolerances.";
 
     // Below this, the closest historical match is too weak to trust as grounding —
     // the model should say so instead of confidently forcing the input into a known category.
     const LOW_SIMILARITY_THRESHOLD = 0.7;
-    const topSimilarity = matchedCases && matchedCases.length > 0 ? matchedCases[0].similarity : 0;
+    const topSimilarity = cases.length > 0 ? cases[0].similarity : 0;
     const isLowConfidenceRetrieval = topSimilarity < LOW_SIMILARITY_THRESHOLD;
+    const hasImage = Boolean(imageUrl && imageUrl.includes(','));
 
     // 3. Construct the Prompts for Multimodal Gemini Inference Engine
     let promptText = `You are a professional industrial automated technician troubleshooting assistant specializing in fluid dispensing defects.
@@ -143,16 +195,19 @@ Populate every field of the required structure:
 - "defect": the single identified defect name.
 - "confidenceScore": your confidence in that defect, an integer 1–5.
 - "symptoms": the operator-reported symptoms that match this defect.
-- "causes": ranked probable root causes, each with a "pct" likelihood 0–100 (highest first).
+- "causes": ranked probable root causes, each with a "pct" likelihood 0–100 (highest first). For each cause give an "evidence" list of 1–3 items: each quotes one specific operator answer or photo observation in "answer" (short, in the operator's own words), says whether it "supports" or "weakens" this cause in "effect", and gives a one-clause "note" on why. Every cause must cite at least one answer.
 - "qualityScore": ratings for shapeConsistency, sizeConsistency, dispensingPosition and defectRisk as integers 1–5, plus an "overall" score 0–100.
 - "reasoning": a context-aware paragraph justifying why the top cause ranks highest.
-- "actionPlan": ordered troubleshooting steps, each with a short "step" title and a specific "detail".`;
+- "actionPlan": ordered troubleshooting steps, each with a short "step" title and a specific "detail".
+- "imageFindings": ${hasImage
+  ? 'inspect the attached photo and list every visible dispensing defect, one item each, using only these labels for "finding": Missing Dot, Oversized Dot, Undersized Dot, Irregular Shape, Excessive Spreading, Other. In "detail" say where in the image it is and what you see; set "severity" to low, medium or high. If the photo shows something that is not a dispensing defect, use "Other" and describe what it actually shows.'
+  : 'no photo was attached, so return an empty array.'}`;
 
     // Pack text prompt context
     const contentParts = [{ text: promptText }];
 
     // If an image upload exists from the drag-and-drop area, include it as data part
-    if (imageUrl && imageUrl.includes(',')) {
+    if (hasImage) {
       const mimeType = imageUrl.match(/data:(.*?);/)[1];
       const base64Data = imageUrl.split(',')[1];
       contentParts.push({
@@ -198,19 +253,38 @@ Populate every field of the required structure:
     // don't rely solely on prompt compliance for something the UI treats as a hard signal.
     if (isLowConfidenceRetrieval && parsedDiagnosticResult.confidenceScore > 2) {
       parsedDiagnosticResult.confidenceScore = 2;
-      parsedDiagnosticResult.reasoning = `[Low-confidence match: the closest known historical case was only ${(topSimilarity * 100).toFixed(0)}% similar, so this may be a defect type outside our dispensing knowledge base — treat the diagnosis below as a best-effort guess.] ${parsedDiagnosticResult.reasoning}`;
     }
+    if (!hasImage) parsedDiagnosticResult.imageFindings = [];
 
-    // Add the real-time database hits directly to the return payload so the frontend can populate insights
     res.json({
       aiResult: parsedDiagnosticResult,
-      matchedCases: matchedCases
+      matchedCases: cases,
+      retrieval: {
+        topSimilarity,
+        threshold: LOW_SIMILARITY_THRESHOLD,
+        lowConfidence: isLowConfidenceRetrieval,
+        sameDefectCount,
+        totalCases
+      }
     });
 
   } catch (error) {
     console.error("Critical Backend Failure:", error);
     res.status(500).json({ error: "Inference calculation pipeline broke down.", details: error.message });
   }
+});
+
+// --- KNOWLEDGE BASE LISTING (read-only; powers the Case history screen) ---
+app.get('/api/cases', async (req, res) => {
+  const { data, error } = await supabase
+    .from('defect_knowledgebase')
+    .select('id, defect_type, symptoms, root_cause, resolution')
+    .order('id', { ascending: false });
+  if (error) {
+    console.error('Case history load failed:', error);
+    return res.status(500).json({ error: 'Could not load the case history.' });
+  }
+  res.json({ cases: data.map(cleanCase) });
 });
 
 // --- START SERVER ---

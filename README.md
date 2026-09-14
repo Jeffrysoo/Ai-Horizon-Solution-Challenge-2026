@@ -17,6 +17,7 @@ Browser SPA (index.html, app.js)
 Express backend (server.js)
         ├─► Gemini embeddings ──► Supabase vector search (match_defects RPC)
         └─► Gemini (structured JSON) ──► diagnosis returned to the UI
+        GET /api/cases ──► full knowledge base (read-only) for the Case history screen
 ```
 
 ## Setup
