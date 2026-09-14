@@ -74,6 +74,10 @@ for (let i = 0; i < selected.length; i++) {
     row.lowConfidence = retrieval.lowConfidence;
     row.lowReason = retrieval.lowConfidenceReason;
     row.topCause = aiResult.causes?.[0]?.name || '';
+    // Did retrieval surface the right defect type? Top-1 accuracy can come from the model's
+    // own knowledge; this is the number that shows whether the knowledge base is doing work.
+    row.topMatch = result.matchedCases?.[0]?.defect_type || '';
+    row.retrievalHit = c.match ? c.match.test(row.topMatch) : null;
     row.evidenceCount = (aiResult.causes || []).reduce((n, x) => n + (x.evidence?.length || 0), 0);
 
     if (c.outOfScope) {
@@ -118,6 +122,7 @@ const summary = {
   inScope: {
     n: inScope.length,
     top1Correct: inScope.filter(r => r.pass).length,
+    retrievalHits: inScope.filter(r => r.retrievalHit).length,
     flaggedLowConfidence: inScope.filter(r => r.lowConfidence).length,
     meanConfidence: mean(inScope.map(r => r.confidence)),
     meanSimilarity: mean(inScope.map(r => r.similarity))
@@ -142,6 +147,7 @@ lines.push('');
 lines.push('## Summary');
 lines.push('');
 lines.push(`- In-scope top-1 defect match: **${pct(summary.inScope.top1Correct, summary.inScope.n)}**`);
+lines.push(`- In-scope retrieval hit (closest knowledge-base case is the right defect type): **${pct(summary.inScope.retrievalHits, summary.inScope.n)}**`);
 lines.push(`- In-scope cases flagged low-confidence (knowledge-base gap): ${pct(summary.inScope.flaggedLowConfidence, summary.inScope.n)}`);
 lines.push(`- Out-of-scope cases correctly flagged (low confidence, score ≤ 2): **${pct(summary.outOfScope.flagged, summary.outOfScope.n)}**`);
 lines.push(`- Mean confidence — in-scope ${fmt(summary.inScope.meanConfidence)} / 5 vs out-of-scope ${fmt(summary.outOfScope.meanConfidence)} / 5`);
@@ -153,10 +159,11 @@ if (summary.errors) lines.push(`- Errors: ${summary.errors}${quotaStop ? ' (run 
 lines.push('');
 lines.push('## Cases');
 lines.push('');
-lines.push('| id | scope | expected | got | conf | sim | low-conf | result | ms |');
-lines.push('|---|---|---|---|---|---|---|---|---|');
+lines.push('| id | scope | expected | got | conf | sim | KB top match | low-conf | result | ms |');
+lines.push('|---|---|---|---|---|---|---|---|---|---|');
 for (const r of rows) {
-  lines.push(`| ${r.id} | ${r.scope} | ${r.label} | ${r.defect ?? '—'} | ${r.confidence ?? '—'} | ${fmt(r.similarity)} | ${r.lowConfidence == null ? '—' : r.lowConfidence ? `yes (${r.lowReason})` : 'no'} | ${r.status} | ${r.ms ?? '—'} |`);
+  const kb = r.topMatch ? `${r.topMatch}${r.retrievalHit == null ? '' : r.retrievalHit ? ' ✓' : ' ✗'}` : '—';
+  lines.push(`| ${r.id} | ${r.scope} | ${r.label} | ${r.defect ?? '—'} | ${r.confidence ?? '—'} | ${fmt(r.similarity)} | ${kb} | ${r.lowConfidence == null ? '—' : r.lowConfidence ? `yes (${r.lowReason})` : 'no'} | ${r.status} | ${r.ms ?? '—'} |`);
 }
 const md = lines.join('\n') + '\n';
 
