@@ -186,10 +186,28 @@ function answer(text) {
   }
 }
 
+// Phone camera shots are often 4–8 MB; downscale before sending so the request stays
+// under the backend's body limit and the model gets the image faster.
+const MAX_IMAGE_EDGE = 1600;
 function readImage(file) {
   if (!file || !/^image\//.test(file.type)) return;
   const r = new FileReader();
-  r.onload = () => { state.imageUrl = r.result; render(); };
+  r.onload = () => {
+    const original = r.result;
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, MAX_IMAGE_EDGE / Math.max(img.width, img.height));
+      if (scale === 1 && file.size < 1.5 * 1024 * 1024) { state.imageUrl = original; render(); return; }
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      state.imageUrl = canvas.toDataURL('image/jpeg', 0.85);
+      render();
+    };
+    img.onerror = () => { state.imageUrl = original; render(); };
+    img.src = original;
+  };
   r.readAsDataURL(file);
 }
 
@@ -271,7 +289,7 @@ function inputHTML() {
       </div>`
     : `<div class="dropzone" id="dropzone" data-action="pick-file">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent-600)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"></path><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path><path d="m8 17 4-4 4 4"></path></svg>
-        <span class="main-line">Drag a photo here, or <u>browse files</u></span>
+        <span class="main-line">Drag a photo here, <u>browse files</u>, or <u data-action="pick-camera">take a photo</u></span>
         <span class="sub-line">JPG or PNG · a top-down shot of the dispensed dots works best</span>
       </div>`;
   return `<main class="screen-narrow" data-screen="input">
@@ -288,6 +306,7 @@ function inputHTML() {
         <span class="field-label">Photo of the dispensing result <span class="opt">(optional)</span></span>
         ${imageBlock}
         <input type="file" id="diq-file" accept="image/*" style="display: none;">
+        <input type="file" id="diq-camera" accept="image/*" capture="environment" style="display: none;">
       </div>
     </div>
     <div class="btn-row">
@@ -386,8 +405,9 @@ function resultsHTML() {
   const confLabel = c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence';
   const retrieval = state.aiResult ? state.retrieval : null;
   const lowConf = Boolean(retrieval && retrieval.lowConfidence);
+  const modelOnly = lowConf && retrieval.lowConfidenceReason === 'model';
   const confTag = lowConf
-    ? '<span class="tag tag-warn">Low confidence · outside known patterns</span>'
+    ? `<span class="tag tag-warn">Low confidence · ${modelOnly ? 'weak fit to known cases' : 'outside known patterns'}</span>`
     : c >= 4
       ? '<span class="tag conf-high">High confidence</span>'
       : `<span class="tag tag-neutral">${confLabel}</span>`;
@@ -395,8 +415,10 @@ function resultsHTML() {
         <div class="caveat-box">
           ${WARN_ICON}
           <div>
-            <b>This may not be a dispensing defect we have on record.</b>
-            <span>The closest confirmed case is only ${Math.round(retrieval.topSimilarity * 100)}% similar (our bar is ${Math.round(retrieval.threshold * 100)}%), so confidence has been capped. Treat the diagnosis below as a best-effort guess and confirm it with an engineer.</span>
+            <b>${modelOnly ? 'The AI is not confident this matches a known dispensing defect.' : 'This may not be a dispensing defect we have on record.'}</b>
+            <span>${modelOnly
+        ? `Similar cases exist (closest ${Math.round(retrieval.topSimilarity * 100)}% similar), but the reported symptom pattern fits them poorly, so the AI rates this only ${c} / 5.`
+        : `The closest confirmed case is only ${Math.round(retrieval.topSimilarity * 100)}% similar (our bar is ${Math.round(retrieval.threshold * 100)}%), so confidence has been capped.`} Treat the diagnosis below as a best-effort guess and confirm it with an engineer.</span>
           </div>
         </div>` : '';
 
@@ -533,11 +555,30 @@ function reportHTML() {
   const aiCausesList = state.aiResult ? state.aiResult.causes : CAUSES;
   const aiReasoning = state.aiResult ? state.aiResult.reasoning : reasoning();
 
-  // NEW: Grab the dynamic action plan from the AI, or fallback to the hardcoded PLAN
   const aiActionPlan = state.aiResult && state.aiResult.actionPlan ? state.aiResult.actionPlan : PLAN;
   const retrieval = state.aiResult ? state.retrieval : null;
   const lowConf = Boolean(retrieval && retrieval.lowConfidence);
   const findings = state.aiResult && Array.isArray(state.aiResult.imageFindings) ? state.aiResult.imageFindings : [];
+
+  const photoSection = state.imageUrl ? `
+      <div class="report-sec">
+        <span class="kicker">Attached photo${findings.length ? ' · AI image findings' : ''}</span>
+        <div class="report-photo-body">
+          <img class="report-thumb" src="${state.imageUrl}" alt="Uploaded dispensing result">
+          ${findings.length
+        ? `<ul>${findings.map(f => `<li><strong>${esc(f.finding || 'Finding')}</strong> (${esc(f.severity || 'n/a')} severity) — ${esc(f.detail || '')}</li>`).join('')}</ul>`
+        : '<p class="reasoning">No image findings were recorded for this photo.</p>'}
+        </div>
+      </div>` : '';
+
+  const causeRows = aiCausesList.map(x => {
+    const evidence = Array.isArray(x.evidence) ? x.evidence : [];
+    const row = `<tr${evidence.length ? ' class="has-ev"' : ''}><td>${esc(x.name)}</td><td class="pct">${x.pct}%</td></tr>`;
+    if (!evidence.length) return row;
+    return row + `<tr class="ev-row"><td colspan="2"><div class="cause-evidence">${evidence.map(e =>
+      `<span class="ev ${e.effect === 'weakens' ? 'ev-down' : 'ev-up'}">${e.effect === 'weakens' ? EV_DOWN : EV_UP}<b>${esc(e.answer || '')}</b>${e.note ? `<span class="note">— ${esc(e.note)}</span>` : ''}</span>`
+    ).join('')}</div></td></tr>`;
+  }).join('');
 
   return `<main class="screen-report" data-screen="report">
     <div class="card report-card">
@@ -552,6 +593,7 @@ function reportHTML() {
         <span class="kicker">Problem description</span>
         <p>${esc(problemSummary)}</p>
       </div>
+      ${photoSection}
       <div class="report-2col">
         <div>
           <span class="kicker">Identified defect</span>
@@ -572,18 +614,15 @@ function reportHTML() {
         <span class="kicker">Cause ranking</span>
         <table class="table">
           <thead><tr><th>Possible cause</th><th style="text-align: right;">AI likelihood</th></tr></thead>
-          <tbody>${aiCausesList.map(x => `<tr><td>${esc(x.name)}</td><td class="pct">${x.pct}%</td></tr>`).join('')}</tbody>
+          <tbody>${causeRows}</tbody>
         </table>
         <p class="reasoning"><strong>AI reasoning:</strong> ${esc(aiReasoning)}</p>
-        ${lowConf ? `<p class="reasoning caveat"><strong>Confidence note:</strong> the closest confirmed case in the knowledge base was only ${Math.round(retrieval.topSimilarity * 100)}% similar, so this diagnosis is a best-effort guess outside known dispensing patterns and should be confirmed by an engineer.</p>` : ''}
+        ${lowConf ? `<p class="reasoning caveat"><strong>Confidence note:</strong> ${retrieval.lowConfidenceReason === 'model'
+          ? `the AI rates this only ${c} / 5 because the reported symptom pattern fits the closest known cases (${Math.round(retrieval.topSimilarity * 100)}% similar) poorly`
+          : `the closest confirmed case in the knowledge base was only ${Math.round(retrieval.topSimilarity * 100)}% similar`}, so this diagnosis is a best-effort guess and should be confirmed by an engineer.</p>` : ''}
       </div>
-      ${findings.length ? `<div class="report-sec">
-        <span class="kicker">Image findings</span>
-        <ul>${findings.map(f => `<li><strong>${esc(f.finding || 'Finding')}</strong> (${esc(f.severity || 'n/a')} severity) — ${esc(f.detail || '')}</li>`).join('')}</ul>
-      </div>` : ''}
       <div class="report-sec">
         <span class="kicker">Recommended troubleshooting sequence</span>
-        <!-- NEW: Maps the dynamic aiActionPlan, checking for both .step (AI) and .title (Fallback) -->
         <ol>${aiActionPlan.map(p => `<li><strong>${esc(p.step || p.title)}.</strong> ${esc(p.detail)}</li>`).join('')}</ol>
       </div>
       <div class="report-sec field">
@@ -733,8 +772,10 @@ function wireScreen() {
     answerInput.focus();
   }
 
-  const file = document.getElementById('diq-file');
-  if (file) file.addEventListener('change', e => readImage(e.target.files && e.target.files[0]));
+  for (const id of ['diq-file', 'diq-camera']) {
+    const input = document.getElementById(id);
+    if (input) input.addEventListener('change', e => readImage(e.target.files && e.target.files[0]));
+  }
 
   const dz = document.getElementById('dropzone');
   if (dz) {
@@ -797,6 +838,7 @@ document.addEventListener('click', e => {
     case 'chip': answer(el.dataset.value); break;
     case 'submit-answer': answer(document.getElementById('diq-answer').value); break;
     case 'pick-file': document.getElementById('diq-file').click(); break;
+    case 'pick-camera': document.getElementById('diq-camera').click(); break;
     case 'clear-image': state.imageUrl = null; render(); break;
     case 'toggle-plan': {
       const i = Number(el.dataset.idx);

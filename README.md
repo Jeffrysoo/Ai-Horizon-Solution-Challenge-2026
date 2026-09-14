@@ -61,9 +61,16 @@ Requires Node.js 18+ and a Supabase project plus a Google Gemini API key.
 - `styles.css` — design-system tokens + all screen styles
 - `app.js` — frontend SPA: screens, question flow, results/report rendering; the
   `CONFIG` object at the top toggles the case-history insight and quality-score card
-- `server.js` — Express backend: the `/api/analyze` RAG pipeline (embed → vector
-  search → Gemini structured-JSON inference)
+- `server.js` — Express backend: `/api/analyze` (rate-limited) and `/api/cases`,
+  thin wrappers around `lib/analyze.js`
+- `lib/analyze.js` — the RAG pipeline (embed → vector search → Gemini structured-JSON
+  inference with a system instruction and typed schema); shared by the server and
+  the eval harness so both run the same code
 - `scripts/seedDatabase.js` — bulk-inserts the sample defect dataset with embeddings
+- `eval/` — labelled evaluation set (`cases.js`) and runner (`run.js`, see below)
+- `demo/target-sheet-a4.pdf` — printable target rings for the hands-on demo: put one
+  drop per ring, photograph the sheet, upload; the rings give the size reference
+  that makes "oversized / undersized / missing" visible in a single photo
 - `supabase/rls_policies.sql` — Row Level Security policy (read-only public access)
 - `assets/hero.webp` — landing hero photo
 - `design/` — the original claude.ai/design source this was implemented from
@@ -74,6 +81,24 @@ Requires Node.js 18+ and a Supabase project plus a Google Gemini API key.
 - **AI Strictness** — Standard vs Strict quality control (penalizes minor variation harder)
 - **Theme** — Light / Dark
 
+## Evaluation
+
+```
+npm run eval                          # all labelled cases (1 embed + 1 generate call each)
+npm run eval -- --only vol,oos-cold   # a subset
+npm run eval -- --tag before-reseed   # label the saved results
+```
+
+`eval/cases.js` holds operator-style descriptions for each defect type in the seed
+data (worded differently from the seed rows, so this measures generalisation, not
+retrieval of memorised text), three out-of-scope cases that should be flagged rather
+than force-fitted, and a synthetic panel photo with three planted defects. The runner
+reports top-1 defect match rate, out-of-scope detection, confidence calibration and
+image-finding recall, and writes `eval/results/<timestamp>-<tag>.{json,md}`.
+
+Each case costs one Gemini generation call, so on the free tier run the full set
+deliberately (it is roughly two-thirds of a day's quota).
+
 ## How it maps to the challenge criteria
 
 - **Step 1 – Problem discovery:** five smart questions with quick-answer chips
@@ -81,9 +106,15 @@ Requires Node.js 18+ and a Supabase project plus a Google Gemini API key.
 - **Bonus – dynamic questions:** answering "Varies shot to shot" inserts a
   follow-up question about onset (`FOLLOWUP`)
 - **Step 2 – Identify the defect:** results screen names the defect with a
-  star confidence level and matching symptoms
+  star confidence level and matching symptoms. If the closest confirmed case is
+  below the similarity bar, or the model's own confidence is ≤ 2, the result is
+  flagged as a best-effort guess instead of being presented as a match
 - **Step 3 – Cause analysis / Step 4 – scoring:** ranked cause bars with
-  likelihood percentages, plus a "why this ranks highest" explanation
+  likelihood percentages, per-cause evidence chips quoting the operator's own
+  answers (supports / weakens), plus a "why this ranks highest" explanation
+- **Bonus – image recognition:** an uploaded or camera photo is analysed by
+  Gemini; findings are labelled Missing Dot / Oversized Dot / Undersized Dot /
+  Irregular Shape / Excessive Spreading and shown beside the photo and in the report
 - **Step 5 – Action plan:** checkable troubleshooting sequence generated per case
 - **Bonus – learning database:** Supabase vector search over past cases feeds the
   "similar problems occurred before" insight; case-history screen with search
