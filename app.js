@@ -44,6 +44,7 @@ const state = {
   cases: null,         // full knowledge base, loaded on demand for the Case history screen
   casesError: null,
   casesLoading: false,
+  confirm: freshConfirm(), // learning-loop form state on the Report screen
   questions: QBASE.slice(),
   qaIdx: 0,
   answers: {},
@@ -77,6 +78,7 @@ const ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" strok
 const EV_UP = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="m5 12 7-7 7 7"></path></svg>';
 const EV_DOWN = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="m19 12-7 7-7-7"></path></svg>';
 const WARN_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-icon)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"></path><path d="M12 9v4"></path><path d="M12 17h.01"></path></svg>';
+const CHECK_ICON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="m9 12 2 2 4-4"></path></svg>';
 
 /* ── derived values ───────────────────────────────────────────────── */
 const STAR_PATH = 'M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.6l-5.9 3 1.3-6.6-4.9-4.6 6.6-.8z';
@@ -109,7 +111,7 @@ function setScreen(screen, stage) {
 function startDiagnosis() {
   Object.assign(state, {
     problem: '', imageUrl: null, aiResult: null, matchedCases: null, retrieval: null, analysisError: null,
-    questions: QBASE.slice(), qaIdx: 0, answers: {}, done: {}, notes: ''
+    questions: QBASE.slice(), qaIdx: 0, answers: {}, done: {}, notes: '', confirm: freshConfirm()
   });
   // Fresh case identity for this diagnosis so every generated report is distinct.
   CASE_ID = nextCaseId();
@@ -174,6 +176,7 @@ function answer(text) {
     state.screen = 'analyzing';
     render();
     if (!state.demoMode) {
+      loadCases(); // so the Analyzing status line can quote the real case count
       analyzeWithGemini();
     } else {
       setTimeout(() => {
@@ -348,11 +351,19 @@ function qaHTML() {
   </main>`;
 }
 
+const ANALYZING_STEPS = [
+  () => 'Embedding your description…',
+  () => `Searching ${state.cases ? `${state.cases.length} confirmed cases` : 'the confirmed-case knowledge base'}…`,
+  () => state.imageUrl ? 'Reading the photo for dot size, shape and spread…' : 'Comparing the symptom pattern with known defects…',
+  () => 'Ranking probable causes and weighing the evidence…',
+  () => 'Writing the troubleshooting sequence…'
+];
 function analyzingHTML() {
   return `<main class="analyzing">
     <span class="kicker">Comparing symptoms against known defect patterns</span>
     <div class="word">Analyzing…</div>
     <div class="scanbar"><i></i></div>
+    <span class="status" id="diq-status">${ANALYZING_STEPS[0]()}</span>
   </main>`;
 }
 
@@ -544,6 +555,86 @@ function resultsHTML() {
   </main>`;
 }
 
+function freshConfirm() {
+  return { status: 'idle', message: '', savedId: null, totalCases: null, defect: '', cause: '', other: '' };
+}
+
+function confirmSectionHTML(aiDefect, causes) {
+  const cf = state.confirm;
+  if (cf.status === 'saved') {
+    return `<div class="confirm-box saved" data-noprint>
+      ${CHECK_ICON}
+      <div>
+        <b>Saved to the knowledge base as case #${cf.savedId}.</b>
+        <span>${cf.totalCases ? `The AI now searches ${cf.totalCases} confirmed cases — including this one — from the next diagnosis on.` : 'It will be retrieved for similar problems from the next diagnosis on.'} <a href="#" data-action="go-history">See it in the case history →</a></span>
+      </div>
+    </div>`;
+  }
+  const defectValue = cf.defect || aiDefect;
+  const selectedCause = cf.cause || (causes[0] && causes[0].name) || '';
+  const options = causes.map(c => `<option value="${esc(c.name)}"${selectedCause === c.name ? ' selected' : ''}>${esc(c.name)}</option>`).join('');
+  const types = [...new Set((state.cases || []).map(c => c.defect_type))];
+  return `<div class="confirm-box" data-noprint>
+    <div class="confirm-head">
+      <span class="kicker">Close the loop</span>
+      <b>Confirm the diagnosis and add this case to the knowledge base</b>
+      <span class="hint">Correct anything the AI got wrong first. Your engineer notes above are saved as the resolution future technicians will see.</span>
+    </div>
+    <div class="confirm-grid">
+      <label>Confirmed defect
+        <input type="text" id="diq-confirm-defect" class="input" list="diq-defect-types" value="${esc(defectValue)}" maxlength="120">
+        <datalist id="diq-defect-types">${types.map(t => `<option value="${esc(t)}">`).join('')}</datalist>
+      </label>
+      <label>Confirmed root cause
+        <select id="diq-confirm-cause" class="input">${options}<option value="__other"${selectedCause === '__other' ? ' selected' : ''}>Other (type below)</option></select>
+        <input type="text" id="diq-confirm-cause-other" class="input" placeholder="Describe the confirmed cause" value="${esc(cf.other)}" maxlength="300" style="${selectedCause === '__other' ? '' : 'display: none;'}">
+      </label>
+    </div>
+    ${cf.status === 'error' ? `<div class="confirm-error">${esc(cf.message)}</div>` : ''}
+    <div class="btn-row">
+      <button type="button" class="btn btn-primary" data-action="confirm-case"${cf.status === 'saving' ? ' disabled' : ''}>${cf.status === 'saving' ? 'Saving…' : `Confirm &amp; save to knowledge base${ARROW}`}</button>
+      <span class="hint">Needs engineer notes describing what fixed it.</span>
+    </div>
+  </div>`;
+}
+
+async function confirmDiagnosis() {
+  const cf = state.confirm;
+  const defectEl = document.getElementById('diq-confirm-defect');
+  const causeEl = document.getElementById('diq-confirm-cause');
+  const otherEl = document.getElementById('diq-confirm-cause-other');
+  cf.defect = defectEl ? defectEl.value.trim() : '';
+  cf.cause = causeEl ? causeEl.value : '';
+  cf.other = otherEl ? otherEl.value.trim() : '';
+  const cause = cf.cause === '__other' ? cf.other : cf.cause;
+  const resolution = state.notes.trim();
+
+  if (!cf.defect || !cause) {
+    cf.status = 'error'; cf.message = 'Enter the confirmed defect and root cause.'; render(); return;
+  }
+  if (resolution.length < 10) {
+    cf.status = 'error';
+    cf.message = 'Add engineer notes describing what fixed it — at least a short sentence. That text becomes the resolution shown for similar problems in future.';
+    render(); return;
+  }
+
+  cf.status = 'saving'; cf.message = ''; render();
+  try {
+    const res = await fetch('/api/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ defect: cf.defect, cause, resolution, problem: state.problem, answers: state.answers, caseRef: CASE_ID })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not save the case');
+    cf.status = 'saved'; cf.savedId = data.id; cf.totalCases = data.totalCases;
+    state.cases = null; // case history and the defect datalist refetch on next use
+  } catch (err) {
+    cf.status = 'error'; cf.message = err.message || 'Could not save the case';
+  }
+  if (state.screen === 'report') render();
+}
+
 function reportHTML() {
   const c = state.aiResult ? state.aiResult.confidenceScore : 4;
   const confLabel = c >= 4 ? 'High confidence' : c === 3 ? 'Moderate confidence' : 'Low confidence';
@@ -626,10 +717,11 @@ function reportHTML() {
         <ol>${aiActionPlan.map(p => `<li><strong>${esc(p.step || p.title)}.</strong> ${esc(p.detail)}</li>`).join('')}</ol>
       </div>
       <div class="report-sec field">
-        <label for="diq-notes" class="kicker">Engineer notes <span style="text-transform: none; letter-spacing: 0;">(optional)</span></label>
+        <label for="diq-notes" class="kicker">Engineer notes <span style="text-transform: none; letter-spacing: 0;">(what was found and what fixed it)</span></label>
         <textarea id="diq-notes" class="input" rows="3" placeholder="Findings after inspection, confirmed cause, corrective action taken…">${esc(state.notes)}</textarea>
       </div>
     </div>
+    ${state.aiResult ? confirmSectionHTML(aiDefect, aiCausesList) : ''}
     <div class="btn-row" data-noprint>
       <button type="button" class="btn btn-primary" data-action="print-report"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><path d="m7 10 5 5 5-5"></path></svg>Download PDF</button>
       <button type="button" class="btn btn-secondary" data-action="back-to-results">Back to results</button>
@@ -658,6 +750,9 @@ async function loadCases() {
     if (!res.ok) throw new Error('Could not load the case history');
     const data = await res.json();
     state.cases = Array.isArray(data.cases) ? data.cases : [];
+    // Populate the Report screen's defect suggestions in place (no re-render, keeps typing intact)
+    const dl = document.getElementById('diq-defect-types');
+    if (dl) dl.innerHTML = [...new Set(state.cases.map(c => c.defect_type))].map(t => `<option value="${esc(t)}">`).join('');
   } catch (err) {
     console.error('Case history error:', err);
     state.casesError = err.message || 'Could not load the case history';
@@ -670,7 +765,8 @@ async function loadCases() {
 function historyRowsHTML(rows) {
   return rows.map(c =>
     `<tr>
-      <td>#${c.id}</td>
+      <td>#${c.id}${c.source === 'confirmed' ? '<br><span class="tag tag-accent">confirmed</span>' : ''}</td>
+      <td class="date">${c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
       <td>${esc(c.defect_type)}</td>
       <td class="sym">${esc(c.symptoms)}</td>
       <td>${esc(c.root_cause)}</td>
@@ -697,12 +793,14 @@ function historyHTML() {
     </div>
     <p class="history-count" id="history-count">${historyCountText(rows.length)}</p>
     ${status}
-    <table class="table history-table" ${loaded ? '' : 'hidden'}>
-      <thead>
-        <tr><th>Case</th><th>Defect</th><th>Symptoms</th><th>Confirmed cause</th><th>Resolution</th></tr>
-      </thead>
-      <tbody id="history-body">${historyRowsHTML(rows)}</tbody>
-    </table>
+    <div class="history-wrap" ${loaded ? '' : 'hidden'}>
+      <table class="table history-table">
+        <thead>
+          <tr><th>Case</th><th>Added</th><th>Defect</th><th>Symptoms</th><th>Confirmed cause</th><th>Resolution</th></tr>
+        </thead>
+        <tbody id="history-body">${historyRowsHTML(rows)}</tbody>
+      </table>
+    </div>
     <div class="history-empty" id="history-empty" ${loaded && !rows.length ? '' : 'hidden'}>No cases match "<span id="history-term">${esc(state.search)}</span>".</div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" data-action="go-home">Back to start</button>
@@ -748,7 +846,9 @@ function settingsHTML() {
 }
 
 /* ── render + wiring ──────────────────────────────────────────────── */
+let analyzingTimer = null;
 function render() {
+  if (analyzingTimer) { clearInterval(analyzingTimer); analyzingTimer = null; }
   renderNav();
   const screens = {
     landing: landingHTML, input: inputHTML, qa: qaHTML,
@@ -765,6 +865,24 @@ function wireScreen() {
 
   const notes = document.getElementById('diq-notes');
   if (notes) notes.addEventListener('input', e => { state.notes = e.target.value; });
+
+  const status = document.getElementById('diq-status');
+  if (status) {
+    let step = 0;
+    analyzingTimer = setInterval(() => {
+      step = Math.min(step + 1, ANALYZING_STEPS.length - 1);
+      status.textContent = ANALYZING_STEPS[step]();
+      if (step === ANALYZING_STEPS.length - 1) { clearInterval(analyzingTimer); analyzingTimer = null; }
+    }, 2600);
+  }
+
+  const causeSelect = document.getElementById('diq-confirm-cause');
+  if (causeSelect) causeSelect.addEventListener('change', e => {
+    const other = document.getElementById('diq-confirm-cause-other');
+    if (!other) return;
+    other.style.display = e.target.value === '__other' ? '' : 'none';
+    if (e.target.value === '__other') other.focus();
+  });
 
   const answerInput = document.getElementById('diq-answer');
   if (answerInput) {
@@ -822,7 +940,8 @@ document.addEventListener('click', e => {
     case 'set-strict': state.strictMode = el.dataset.value === 'true'; render(); break;
     case 'start-diagnosis': startDiagnosis(); break;
     case 'continue-qa': setScreen('qa', 1); break;
-    case 'to-report': setScreen('report', 3); break;
+    case 'to-report': setScreen('report', 3); loadCases(); break;
+    case 'confirm-case': confirmDiagnosis(); break;
     case 'back-to-results': setScreen('results'); break;
     case 'nav-step': {
       const stage = Number(el.dataset.stage);

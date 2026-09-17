@@ -35,7 +35,7 @@ Requires Node.js 18+ and a Supabase project plus a Google Gemini API key.
    GEMINI_API_KEY=your_google_gemini_api_key
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_KEY=your_supabase_publishable_key
-   SUPABASE_SERVICE_KEY=your_supabase_service_role_key   # used only by the seed script
+   SUPABASE_SERVICE_KEY=your_supabase_service_role_key   # server-side only: seeding + saving confirmed cases
    PORT=8080
    ```
 
@@ -81,6 +81,20 @@ Requires Node.js 18+ and a Supabase project plus a Google Gemini API key.
 - **AI Strictness** — Standard vs Strict quality control (penalizes minor variation harder)
 - **Theme** — Light / Dark
 
+## Learning loop
+
+On the Report screen an engineer can confirm — or correct — the diagnosis and save
+it. The case is embedded in the same format as the seed rows and inserted into
+`defect_knowledgebase`, so it is retrieved for similar problems from the very next
+diagnosis, and the "N confirmed cases" count on the Results screen grows.
+
+- Requires `SUPABASE_SERVICE_KEY` on the server (writes bypass the read-only RLS
+  policy; the browser never sees the key).
+- Run `supabase/learning_loop.sql` once in the Supabase SQL Editor to add the
+  `created_at`, `source`, `material` and `case_ref` columns. Without it, confirmed
+  cases are still saved with the base fields and the Case history shows "—" for the
+  date.
+
 ## Evaluation
 
 ```
@@ -116,7 +130,9 @@ deliberately (it is roughly two-thirds of a day's quota).
   Gemini; findings are labelled Missing Dot / Oversized Dot / Undersized Dot /
   Irregular Shape / Excessive Spreading and shown beside the photo and in the report
 - **Step 5 – Action plan:** checkable troubleshooting sequence generated per case
-- **Bonus – learning database:** Supabase vector search over past cases feeds the
-  "similar problems occurred before" insight; case-history screen with search
+- **Bonus – learning database:** Supabase vector search over confirmed cases feeds
+  the "N confirmed cases of this defect" insight; engineers confirm or correct a
+  diagnosis on the Report screen and it becomes a retrievable case; the Case history
+  screen lists the live table with search
 - **Bonus – PDF report:** report screen with engineer notes; "Download PDF"
   prints just the report (print stylesheet hides the app chrome)
