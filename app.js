@@ -9,14 +9,15 @@ const CONFIG = {
 };
 
 /* ── knowledge base ───────────────────────────────────────────────── */
+const FOLLOWUP = { id: 'onset', q: 'Does the variation appear right from startup, or only after the machine has been running for some time?', chips: ['From startup', 'After running a while', 'Not sure'] };
 const QBASE = [
   { id: 'material', q: 'What material is being dispensed?', chips: ['Adhesive', 'Solder paste', 'Epoxy', 'Sealant', 'Other fluid'] },
   { id: 'amount', q: 'Is the dispensed amount too large or too small?', chips: ['Too small', 'Too large', 'Varies shot to shot', 'Dots missing entirely'] },
+  FOLLOWUP,
   { id: 'timing', q: 'Is the defect continuous or occasional?', chips: ['Continuous — every shot', 'Occasional — random shots', 'Only after long runs'] },
   { id: 'change', q: 'Has the material, nozzle or any process setting recently changed?', chips: ['Material batch changed', 'Nozzle replaced', 'Settings adjusted', 'No recent changes'] },
   { id: 'location', q: 'Is the defect at one location or across multiple locations?', chips: ['One location', 'Multiple locations', 'Random locations'] }
 ];
-const FOLLOWUP = { id: 'onset', q: 'Does the variation appear right from startup, or only after the machine has been running for some time?', chips: ['From startup', 'After running a while', 'Not sure'] };
 const CAUSES = [
   { name: 'Air Bubble', pct: 85, top: true },
   { name: 'Nozzle Blockage', pct: 70 },
@@ -167,26 +168,8 @@ function answer(text) {
   const qs = state.questions;
   const q = qs[state.qaIdx];
   state.answers[q.id] = t;
-  // Bonus challenge: dynamic follow-up when the amount varies shot to shot
-  if (q.id === 'amount' && /vari/i.test(t) && !qs.some(x => x.id === 'onset')) {
-    qs.splice(state.qaIdx + 1, 0, FOLLOWUP);
-  }
-  const next = state.qaIdx + 1;
-  if (next >= qs.length) {
-    state.screen = 'analyzing';
-    render();
-    if (!state.demoMode) {
-      loadCases(); // so the Analyzing status line can quote the real case count
-      analyzeWithGemini();
-    } else {
-      setTimeout(() => {
-        if (state.screen === 'analyzing') setScreen('results', 2);
-      }, 1600);
-    }
-  } else {
-    state.qaIdx = next;
-    render();
-  }
+  state.qaIdx = state.qaIdx + 1;
+  render();
 }
 
 // Phone camera shots are often 4–8 MB; downscale before sending so the request stays
@@ -236,10 +219,10 @@ function renderNav() {
 
 /* ── screens ──────────────────────────────────────────────────────── */
 function landingHTML() {
-  const tickers = ['Describe the defect', 'Five smart questions', 'Ranked causes', 'Action plan & report'];
+  const tickers = ['Describe the defect', 'Six smart questions', 'Ranked causes', 'Action plan & report'];
   const flow = [
     { n: '01', title: 'Describe', body: 'State the defect in plain words, attach a photo of the result.' },
-    { n: '02', title: 'Answer', body: 'Five smart questions narrow down the symptom pattern.' },
+    { n: '02', title: 'Answer', body: 'Six smart questions narrow down the symptom pattern.' },
     { n: '03', title: 'Diagnose', body: 'Ranked causes with the reasoning behind each score.' },
     { n: '04', title: 'Act', body: 'A checkable inspection sequence and a printable report.' }
   ];
@@ -262,7 +245,7 @@ function landingHTML() {
     </div>
     <div class="about-grid">
       <span class="tag tag-outline">About DispenseIQ</span>
-      <p>We start from your description of the defect, then narrow the symptom pattern with five smart questions. <strong>Every ranked cause comes with the reasoning behind it.</strong></p>
+      <p>We start from your description of the defect, then narrow the symptom pattern with six smart questions. <strong>Every ranked cause comes with the reasoning behind it.</strong></p>
     </div>
     <div class="flow-grid">
       <h2 class="reveal-item">Troubleshooting must be clear — <span class="accent">not costly</span></h2>
@@ -296,11 +279,11 @@ function inputHTML() {
         <span class="sub-line">JPG or PNG · a top-down shot of the dispensed dots works best</span>
       </div>`;
   return `<main class="screen-narrow" data-screen="input">
-    <div class="screen-head">
+    <div class="screen-head reveal-item">
       <span class="kicker">Step 01 · Problem discovery</span>
       <h2 class="screen-title">Describe the problem</h2>
     </div>
-    <div class="card input-card">
+    <div class="card input-card reveal-item reveal-stagger-1">
       <div class="field">
         <label for="diq-problem">Describe the dispensing problem you're seeing</label>
         <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
@@ -321,21 +304,23 @@ function inputHTML() {
 
 function qaHTML() {
   const qs = state.questions;
-  const q = qs[Math.min(state.qaIdx, qs.length - 1)];
+  const isFinished = state.qaIdx >= qs.length;
+  const q = isFinished ? null : qs[state.qaIdx];
   const log = qs.slice(0, state.qaIdx).map(x =>
     `<div class="pair">
       <div class="q">${x.q}</div>
       <span class="tag tag-accent a">${esc(state.answers[x.id] || '—')}</span>
     </div>`).join('');
-  return `<main class="screen-narrow" data-screen="qa">
-    <div class="screen-head">
-      <div class="qa-head-row">
-        <span class="kicker">Step 02 · Troubleshooting questions</span>
-        <span class="qa-count">Question ${Math.min(state.qaIdx + 1, qs.length)} of ${qs.length}</span>
+    
+  const activeCard = isFinished ? `
+    <div class="card qa-card chat-bubble-enter">
+      <div class="card-kicker">DispenseIQ</div>
+      <div class="qa-question">All questions answered.</div>
+      <div class="btn-row" style="margin-top: 16px;">
+        <button type="button" class="btn btn-primary" data-action="start-analysis-flow">Proceed to Analysis${ARROW}</button>
+        <button type="button" class="btn btn-ghost" data-action="undo-answer">Undo last answer</button>
       </div>
-      <div class="progress">${qs.map((_, i) => `<i class="${i <= state.qaIdx ? 'on' : ''}"></i>`).join('')}</div>
-    </div>
-    ${log ? `<div class="qa-log">${log}</div>` : ''}
+    </div>` : `
     <div class="card qa-card chat-bubble-enter">
       <div class="card-kicker">DispenseIQ asks</div>
       <div class="qa-question">${q.q}</div>
@@ -346,8 +331,20 @@ function qaHTML() {
         <span class="or">or type an answer</span>
         <input type="text" id="diq-answer" class="input" placeholder="Type here…">
         <button type="button" class="btn btn-primary" data-action="submit-answer">Answer</button>
+        ${state.qaIdx > 0 ? `<button type="button" class="btn btn-ghost" data-action="undo-answer">Undo</button>` : ''}
       </div>
+    </div>`;
+
+  return `<main class="screen-narrow" data-screen="qa">
+    <div class="screen-head">
+      <div class="qa-head-row">
+        <span class="kicker">Step 02 · Troubleshooting questions</span>
+        <span class="qa-count">Question ${Math.min(state.qaIdx + 1, qs.length)} of ${qs.length}</span>
+      </div>
+      <div class="progress">${qs.map((_, i) => `<i class="${i <= state.qaIdx ? 'on' : ''}"></i>`).join('')}</div>
     </div>
+    ${log ? `<div class="qa-log">${log}</div>` : ''}
+    ${activeCard}
   </main>`;
 }
 
@@ -652,7 +649,7 @@ function reportHTML() {
   const findings = state.aiResult && Array.isArray(state.aiResult.imageFindings) ? state.aiResult.imageFindings : [];
 
   const photoSection = state.imageUrl ? `
-      <div class="report-sec">
+      <div class="report-sec reveal-item">
         <span class="kicker">Attached photo${findings.length ? ' · AI image findings' : ''}</span>
         <div class="report-photo-body">
           <img class="report-thumb" src="${state.imageUrl}" alt="Uploaded dispensing result">
@@ -672,20 +669,20 @@ function reportHTML() {
   }).join('');
 
   return `<main class="screen-report" data-screen="report">
-    <div class="card report-card">
-      <div class="report-head">
+    <div class="card report-card reveal-item">
+      <div class="report-head reveal-item reveal-stagger-1">
         <div class="l">
           <span class="kicker">Case ${CASE_ID}</span>
           <h2>DispenseIQ Troubleshooting Report</h2>
         </div>
         <span class="date">${REPORT_DATE}</span>
       </div>
-      <div class="report-sec">
+      <div class="report-sec reveal-item reveal-stagger-2">
         <span class="kicker">Problem description</span>
         <p>${esc(problemSummary)}</p>
       </div>
       ${photoSection}
-      <div class="report-2col">
+      <div class="report-2col reveal-item">
         <div>
           <span class="kicker">Identified defect</span>
           <span class="val">${esc(aiDefect)}</span>
@@ -695,13 +692,13 @@ function reportHTML() {
           <span class="stars-line">${stars(c, 15)} <span class="lbl">${c} / 5 · ${confLabel}</span></span>
         </div>
       </div>
-      <div class="report-sec">
+      <div class="report-sec reveal-item">
         <span class="kicker">Session Q&amp;A</span>
         ${answered.length
       ? answered.map(x => `<div class="report-qa-row"><span class="q">${x.q}</span><span class="a">${esc(state.answers[x.id])}</span></div>`).join('')
       : '<p class="reasoning">No questions answered this session.</p>'}
       </div>
-      <div class="report-sec">
+      <div class="report-sec reveal-item">
         <span class="kicker">Cause ranking</span>
         <table class="table">
           <thead><tr><th>Possible cause</th><th style="text-align: right;">AI likelihood</th></tr></thead>
@@ -712,11 +709,11 @@ function reportHTML() {
           ? `the AI rates this only ${c} / 5 because the reported symptom pattern fits the closest known cases (${Math.round(retrieval.topSimilarity * 100)}% similar) poorly`
           : `the closest confirmed case in the knowledge base was only ${Math.round(retrieval.topSimilarity * 100)}% similar`}, so this diagnosis is a best-effort guess and should be confirmed by an engineer.</p>` : ''}
       </div>
-      <div class="report-sec">
+      <div class="report-sec reveal-item">
         <span class="kicker">Recommended troubleshooting sequence</span>
         <ol>${aiActionPlan.map(p => `<li><strong>${esc(p.step || p.title)}.</strong> ${esc(p.detail)}</li>`).join('')}</ol>
       </div>
-      <div class="report-sec field">
+      <div class="report-sec field reveal-item">
         <label for="diq-notes" class="kicker">Engineer notes <span style="text-transform: none; letter-spacing: 0;">(what was found and what fixed it)</span></label>
         <textarea id="diq-notes" class="input" rows="3" placeholder="Findings after inspection, confirmed cause, corrective action taken…">${esc(state.notes)}</textarea>
       </div>
@@ -857,8 +854,9 @@ function render() {
   app.innerHTML = screens[state.screen]();
   wireScreen();
   
+  initScrollObserver();
+  
   if (state.screen === 'landing') {
-    initScrollObserver();
     window.scrollTo(0, 0);
   } else if (state.screen === 'qa') {
     const container = document.documentElement;
@@ -966,7 +964,34 @@ document.addEventListener('click', e => {
     case 'set-demo': state.demoMode = el.dataset.value === 'true'; render(); break;
     case 'set-strict': state.strictMode = el.dataset.value === 'true'; render(); break;
     case 'start-diagnosis': startDiagnosis(); break;
-    case 'continue-qa': setScreen('qa', 1); break;
+    case 'start-analysis-flow':
+      state.screen = 'analyzing';
+      render();
+      if (!state.demoMode) {
+        loadCases(); // so the Analyzing status line can quote the real case count
+        analyzeWithGemini();
+      } else {
+        setTimeout(() => {
+          if (state.screen === 'analyzing') setScreen('results', 2);
+        }, 1600);
+      }
+      break;
+    case 'undo-answer':
+      if (state.qaIdx > 0) {
+        state.qaIdx--;
+        const prevId = state.questions[state.qaIdx].id;
+        delete state.answers[prevId];
+        if (state.screen !== 'qa') {
+          state.screen = 'qa';
+        }
+        render();
+      }
+      break;
+    case 'continue-qa': 
+      state.qaIdx = 0; 
+      state.answers = {}; 
+      setScreen('qa', 1); 
+      break;
     case 'to-report': setScreen('report', 3); loadCases(); break;
     case 'confirm-case': confirmDiagnosis(); break;
     case 'back-to-results': setScreen('results'); break;

@@ -1076,3 +1076,33 @@ main, .screen-wide, .screen-report {
   animation: diqFadeUp 0.35s var(--ease-out-expo) forwards;
 }
 
+\n
+.cta-band {
+  position: relative;
+  overflow: hidden;
+}
+
+.cta-band::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: url('assets/hero.webp');
+  background-size: cover;
+  background-position: center;
+  opacity: 0.15;
+  pointer-events: none;
+  z-index: 0;
+  mix-blend-mode: overlay;
+  filter: grayscale(100%);
+}
+
+.cta-band > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme="dark"] .cta-band::before {
+  opacity: 0.25;
+  mix-blend-mode: soft-light;
+}
+\n
