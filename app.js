@@ -248,8 +248,8 @@ function landingHTML() {
       <div class="hero-img duotone"><img src="assets/hero.webp" alt="Dispensing line"></div>
       <div class="hero-fade"></div>
       <div class="hero-content">
-        <h1 class="hero-title">Identify dispensing problems <em>faster with AI</em></h1>
-        <button type="button" class="btn btn-primary hero-cta" data-action="start-diagnosis">Start new diagnosis${ARROW}</button>
+        <h1 class="hero-title reveal-item">Identify dispensing problems <em>faster with AI</em></h1>
+        <button type="button" class="btn btn-primary hero-cta reveal-item reveal-stagger-1" data-action="start-diagnosis">Start new diagnosis${ARROW}</button>
       </div>
     </div>
     <div class="hero-meta">
@@ -265,9 +265,9 @@ function landingHTML() {
       <p>We start from your description of the defect, then narrow the symptom pattern with five smart questions. <strong>Every ranked cause comes with the reasoning behind it.</strong></p>
     </div>
     <div class="flow-grid">
-      <h2>Troubleshooting must be clear — <span class="accent">not costly</span></h2>
+      <h2 class="reveal-item">Troubleshooting must be clear — <span class="accent">not costly</span></h2>
       <div class="flow-cells">
-        ${flow.map(f => `<div class="flow-row"><span class="n">(${f.n})</span><span class="t">${f.title}</span><span class="b">${f.body}</span></div>`).join('')}
+        ${flow.map((f, i) => `<div class="flow-row reveal-item reveal-stagger-${i + 1}"><span class="n">(${f.n})</span><span class="t">${f.title}</span><span class="b">${f.body}</span></div>`).join('')}
       </div>
     </div>
     <div class="cta-band">
@@ -336,7 +336,7 @@ function qaHTML() {
       <div class="progress">${qs.map((_, i) => `<i class="${i <= state.qaIdx ? 'on' : ''}"></i>`).join('')}</div>
     </div>
     ${log ? `<div class="qa-log">${log}</div>` : ''}
-    <div class="card qa-card">
+    <div class="card qa-card chat-bubble-enter">
       <div class="card-kicker">DispenseIQ asks</div>
       <div class="qa-question">${q.q}</div>
       <div class="chip-row">
@@ -856,7 +856,34 @@ function render() {
   };
   app.innerHTML = screens[state.screen]();
   wireScreen();
-  window.scrollTo(0, 0);
+  
+  if (state.screen === 'landing') {
+    initScrollObserver();
+    window.scrollTo(0, 0);
+  } else if (state.screen === 'qa') {
+    const container = document.documentElement;
+    window.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  } else {
+    window.scrollTo(0, 0);
+  }
+}
+
+function initScrollObserver() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-revealed');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, {
+    threshold: 0.15,
+    rootMargin: '0px 0px -40px 0px'
+  });
+
+  document.querySelectorAll('.reveal-item:not(.is-revealed)').forEach((el) => {
+    observer.observe(el);
+  });
 }
 
 function wireScreen() {

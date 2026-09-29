@@ -957,3 +957,122 @@ main, .screen-wide, .screen-report {
     display: none;
   }
 }
+
+
+/* Smooth cubic bezier curve for technical UI */
+:root {
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-fluid: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Base fade-and-rise keyframe */
+@keyframes diqFadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Subtle scale-in for cards and containers */
+@keyframes diqCardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Progress bar fill sweep from 0% */
+@keyframes diqBarFill {
+  0% {
+    width: 0%;
+  }
+}
+
+/* Scroll reveal utility classes */
+.reveal-item {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+  will-change: opacity, transform;
+}
+
+.reveal-item.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Accessibility: instantly show all elements if reduced motion is requested */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+.reveal-stagger-1 { transition-delay: 80ms; }
+.reveal-stagger-2 { transition-delay: 160ms; }
+.reveal-stagger-3 { transition-delay: 240ms; }
+.reveal-stagger-4 { transition-delay: 320ms; }
+
+.results-head {
+  animation: diqFadeUp 0.4s var(--ease-out-expo) forwards;
+}
+
+.results-grid .side:first-child .defect-card {
+  animation: diqCardEnter 0.5s var(--ease-out-expo) 0.1s backwards;
+}
+
+.results-grid .side:last-child .card:last-child {
+  animation: diqCardEnter 0.5s var(--ease-out-expo) 0.2s backwards;
+}
+
+.causes-card {
+  animation: diqCardEnter 0.5s var(--ease-out-expo) 0.3s backwards;
+}
+
+.cause-bar i {
+  animation: diqBarFill 1s var(--ease-out-expo) 0.45s backwards;
+  transition: width 0.8s var(--ease-out-expo);
+}
+
+.cause-row {
+  animation: diqFadeUp 0.5s var(--ease-out-expo) forwards;
+}
+.cause-row:nth-child(1) { animation-delay: 0.36s; }
+.cause-row:nth-child(2) { animation-delay: 0.42s; }
+.cause-row:nth-child(3) { animation-delay: 0.48s; }
+.cause-row:nth-child(4) { animation-delay: 0.54s; }
+.cause-row:nth-child(5) { animation-delay: 0.60s; }
+
+.why-box {
+  animation: diqFadeUp 0.5s var(--ease-out-expo) 0.6s backwards;
+}
+
+.plan-row {
+  animation: diqFadeUp 0.5s var(--ease-out-expo) backwards;
+}
+.plan-row:nth-child(1) { animation-delay: 0.70s; }
+.plan-row:nth-child(2) { animation-delay: 0.76s; }
+.plan-row:nth-child(3) { animation-delay: 0.82s; }
+.plan-row:nth-child(4) { animation-delay: 0.88s; }
+.plan-row:nth-child(5) { animation-delay: 0.94s; }
+.plan-row:nth-child(6) { animation-delay: 1.00s; }
+
+.chat-bubble-enter {
+  animation: diqFadeUp 0.35s var(--ease-out-expo) forwards;
+}
+
