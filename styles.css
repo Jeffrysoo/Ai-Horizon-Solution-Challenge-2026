@@ -1106,3 +1106,211 @@ main, .screen-wide, .screen-report {
   mix-blend-mode: soft-light;
 }
 \n
+
+/* --- MOBILE RESPONSIVENESS --- */
+@media (max-width: 768px) {
+  /* Hide the side gutters to free up space */
+  .ambient-gutters {
+    display: none !important;
+  }
+  
+  /* Container spacing */
+  .shell {
+    padding: 16px !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Typography */
+  .hero-title {
+    font-size: clamp(32px, 10vw, 48px) !important;
+    max-width: 100% !important;
+  }
+  
+  .screen-title {
+    font-size: 28px !important;
+  }
+  
+  /* Top Navigation */
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding-bottom: 12px;
+  }
+  
+  .nav-steps {
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+  }
+  
+  .step-pill {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  /* Grids and Layouts */
+  .results-grid, 
+  .about-grid, 
+  .flow-grid, 
+  .flow-cells, 
+  .report-2col, 
+  .confirm-grid,
+  .vision-body,
+  .report-photo-body {
+    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+  
+  /* CTA Band */
+  .cta-band {
+    flex-direction: column !important;
+    text-align: left !important;
+    align-items: flex-start !important;
+  }
+  
+  .cta-band .right {
+    flex-direction: column !important;
+    width: 100%;
+    align-items: stretch;
+  }
+  
+  .cta-band .right .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Button Rows */
+  .btn-row {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  
+  .btn-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* Input/QA area */
+  .chip-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  
+  .answer-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .answer-row .or {
+    text-align: center;
+    margin: 8px 0;
+  }
+  
+  /* Dropzone */
+  .dropzone {
+    padding: 24px 16px;
+  }
+  
+  /* Causes and Plans */
+  .cause-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .cause-row .pct {
+    align-self: flex-end;
+    margin-top: -30px;
+  }
+  
+  .cause-bar {
+    width: 100%;
+  }
+  
+  .cause-evidence {
+    flex-direction: column;
+  }
+  
+  .plan-row {
+    align-items: flex-start;
+  }
+  
+  .plan-row .n,
+  .plan-row .check {
+    margin-top: 4px;
+  }
+  
+  /* Quality Score */
+  .quality-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  /* History Table */
+  .history-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+  
+  .history-table {
+    min-width: 600px;
+  }
+  
+  /* Report Specific */
+  .report-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  
+  .report-head .date {
+    align-self: flex-start;
+  }
+  
+  .report-qa-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  /* Cards */
+  .card {
+    padding: 20px !important;
+  }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: clamp(28px, 12vw, 36px) !important;
+  }
+  
+  .card {
+    padding: 16px !important;
+  }
+  
+  .nav-steps {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+
+
+@media (max-width: 768px) {
+  .table, .history-table {
+    display: block !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    border: 0;
+  }
+}
+
