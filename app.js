@@ -9,11 +9,14 @@ const CONFIG = {
 };
 
 /* ── knowledge base ───────────────────────────────────────────────── */
+// Dynamic follow-up: only asked when the "amount" answer says the volume varies
+// (inserted right after it by answer(), removed again if that answer is undone).
 const FOLLOWUP = { id: 'onset', q: 'Does the variation appear right from startup, or only after the machine has been running for some time?', chips: ['From startup', 'After running a while', 'Not sure'] };
+const FOLLOWUP_AFTER = 'amount';
+const triggersFollowup = text => /var(y|ies|iable|iation)|inconsistent/i.test(text);
 const QBASE = [
   { id: 'material', q: 'What material is being dispensed?', chips: ['Adhesive', 'Solder paste', 'Epoxy', 'Sealant', 'Other fluid'] },
   { id: 'amount', q: 'Is the dispensed amount too large or too small?', chips: ['Too small', 'Too large', 'Varies shot to shot', 'Dots missing entirely'] },
-  FOLLOWUP,
   { id: 'timing', q: 'Is the defect continuous or occasional?', chips: ['Continuous — every shot', 'Occasional — random shots', 'Only after long runs'] },
   { id: 'change', q: 'Has the material, nozzle or any process setting recently changed?', chips: ['Material batch changed', 'Nozzle replaced', 'Settings adjusted', 'No recent changes'] },
   { id: 'location', q: 'Is the defect at one location or across multiple locations?', chips: ['One location', 'Multiple locations', 'Random locations'] }
@@ -168,7 +171,24 @@ function answer(text) {
   const qs = state.questions;
   const q = qs[state.qaIdx];
   state.answers[q.id] = t;
+  if (q.id === FOLLOWUP_AFTER && triggersFollowup(t) && !qs.includes(FOLLOWUP)) {
+    qs.splice(state.qaIdx + 1, 0, FOLLOWUP);
+  }
   state.qaIdx = state.qaIdx + 1;
+  render();
+}
+
+// Undoing the answer that triggered the follow-up also withdraws the follow-up.
+function undoAnswer() {
+  if (state.qaIdx <= 0) return;
+  state.qaIdx--;
+  const prevId = state.questions[state.qaIdx].id;
+  delete state.answers[prevId];
+  if (prevId === FOLLOWUP_AFTER && state.questions.includes(FOLLOWUP)) {
+    state.questions = state.questions.filter(x => x !== FOLLOWUP);
+    delete state.answers[FOLLOWUP.id];
+  }
+  state.screen = 'qa';
   render();
 }
 
@@ -219,10 +239,10 @@ function renderNav() {
 
 /* ── screens ──────────────────────────────────────────────────────── */
 function landingHTML() {
-  const tickers = ['Describe the defect', 'Six smart questions', 'Ranked causes', 'Action plan & report'];
+  const tickers = ['Describe the defect', 'Five smart questions', 'Ranked causes', 'Action plan & report'];
   const flow = [
     { n: '01', title: 'Describe', body: 'State the defect in plain words, attach a photo of the result.' },
-    { n: '02', title: 'Answer', body: 'Six smart questions narrow down the symptom pattern.' },
+    { n: '02', title: 'Answer', body: 'Five smart questions narrow down the symptom pattern, with a follow-up when the answers call for one.' },
     { n: '03', title: 'Diagnose', body: 'Ranked causes with the reasoning behind each score.' },
     { n: '04', title: 'Act', body: 'A checkable inspection sequence and a printable report.' }
   ];
@@ -245,7 +265,7 @@ function landingHTML() {
     </div>
     <div class="about-grid">
       <span class="tag tag-outline">About DispenseIQ</span>
-      <p>We start from your description of the defect, then narrow the symptom pattern with six smart questions. <strong>Every ranked cause comes with the reasoning behind it.</strong></p>
+      <p>We start from your description of the defect, then narrow the symptom pattern with five smart questions. <strong>Every ranked cause comes with the reasoning behind it.</strong></p>
     </div>
     <div class="flow-grid">
       <h2 class="reveal-item">Troubleshooting must be clear — <span class="accent">not costly</span></h2>
@@ -286,7 +306,7 @@ function inputHTML() {
     <div class="card input-card reveal-item reveal-stagger-1">
       <div class="field">
         <label for="diq-problem">Describe the dispensing problem you're seeing</label>
-        <textarea id="diq-problem" class="input" rows="5" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
+        <textarea id="diq-problem" class="input" rows="5" maxlength="4000" placeholder="e.g. The adhesive dot is sometimes too small — some boards get a full dot, others barely any material.">${esc(state.problem)}</textarea>
       </div>
       <div class="field">
         <span class="field-label">Photo of the dispensing result <span class="opt">(optional)</span></span>
@@ -329,7 +349,7 @@ function qaHTML() {
       </div>
       <div class="answer-row">
         <span class="or">or type an answer</span>
-        <input type="text" id="diq-answer" class="input" placeholder="Type here…">
+        <input type="text" id="diq-answer" class="input" maxlength="300" placeholder="Type here…">
         <button type="button" class="btn btn-primary" data-action="submit-answer">Answer</button>
         ${state.qaIdx > 0 ? `<button type="button" class="btn btn-ghost" data-action="undo-answer">Undo</button>` : ''}
       </div>
@@ -764,10 +784,10 @@ function historyRowsHTML(rows) {
     `<tr>
       <td>#${c.id}${c.source === 'confirmed' ? '<br><span class="tag tag-accent">confirmed</span>' : ''}</td>
       <td class="date">${c.created_at ? new Date(c.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
-      <td>${esc(c.defect_type)}</td>
-      <td class="sym">${esc(c.symptoms)}</td>
-      <td>${esc(c.root_cause)}</td>
-      <td>${esc(c.resolution)}</td>
+      <td class="defect">${esc(c.defect_type)}</td>
+      <td class="sym" data-label="Symptoms">${esc(c.symptoms)}</td>
+      <td data-label="Confirmed cause">${esc(c.root_cause)}</td>
+      <td data-label="Resolution">${esc(c.resolution)}</td>
     </tr>`).join('');
 }
 
@@ -875,7 +895,8 @@ function initScrollObserver() {
       }
     });
   }, {
-    threshold: 0.15,
+    // 0, not a percentage: a tall card on a short phone screen can never be 15% visible
+    threshold: 0,
     rootMargin: '0px 0px -40px 0px'
   });
 
@@ -976,20 +997,11 @@ document.addEventListener('click', e => {
         }, 1600);
       }
       break;
-    case 'undo-answer':
-      if (state.qaIdx > 0) {
-        state.qaIdx--;
-        const prevId = state.questions[state.qaIdx].id;
-        delete state.answers[prevId];
-        if (state.screen !== 'qa') {
-          state.screen = 'qa';
-        }
-        render();
-      }
-      break;
-    case 'continue-qa': 
-      state.qaIdx = 0; 
-      state.answers = {}; 
+    case 'undo-answer': undoAnswer(); break;
+    case 'continue-qa':
+      state.qaIdx = 0;
+      state.answers = {};
+      state.questions = QBASE.slice();
       setScreen('qa', 1); 
       break;
     case 'to-report': setScreen('report', 3); loadCases(); break;

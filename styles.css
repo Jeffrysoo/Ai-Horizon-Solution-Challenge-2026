@@ -1076,7 +1076,6 @@ main, .screen-wide, .screen-report {
   animation: diqFadeUp 0.35s var(--ease-out-expo) forwards;
 }
 
-\n
 .cta-band {
   position: relative;
   overflow: hidden;
@@ -1105,212 +1104,126 @@ main, .screen-wide, .screen-report {
   opacity: 0.25;
   mix-blend-mode: soft-light;
 }
-\n
 
-/* --- MOBILE RESPONSIVENESS --- */
+.topbar-links { display: flex; gap: 8px; }
+
+/* ── mobile (phones and small tablets) ──────────────────────────────── */
+
 @media (max-width: 768px) {
-  /* Hide the side gutters to free up space */
-  .ambient-gutters {
-    display: none !important;
-  }
-  
-  /* Container spacing */
-  .shell {
-    padding: 16px !important;
-    margin: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-  
-  /* Typography */
-  .hero-title {
-    font-size: clamp(32px, 10vw, 48px) !important;
-    max-width: 100% !important;
-  }
-  
-  .screen-title {
-    font-size: 28px !important;
-  }
-  
-  /* Top Navigation */
-  .topbar {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-    padding-bottom: 12px;
-  }
-  
+  .ambient-gutters { display: none !important; }
+
+  /* Header: brand + links on one row, steps on their own scrollable row */
+  .topbar { flex-wrap: wrap; gap: 10px; padding: 10px 16px; }
+  .topbar-links { margin-left: auto; }
   .nav-steps {
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: flex-start;
+    order: 3; width: 100%; margin: 0; gap: 0;
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
   }
-  
-  .step-pill {
-    padding: 6px 12px;
-    font-size: 12px;
+  .nav-steps::-webkit-scrollbar { display: none; }
+  .step-pill, [data-theme="dark"] .step-pill { padding: 8px 10px !important; flex-shrink: 0; }
+
+  .site-footer { flex-direction: column; gap: 4px; padding: 12px 16px; }
+
+  /* Landing */
+  .hero { margin: 16px 16px 0; }
+  .hero-content { padding: 48px 16px 120px; min-height: 440px; gap: 24px; }
+  .hero-title { font-size: clamp(34px, 11vw, 56px) !important; max-width: 100% !important; overflow-wrap: break-word; }
+  .hero-cta { font-size: 15px; padding: 12px 20px; }
+  .hero-meta { flex-direction: column; gap: 8px; padding: 16px; }
+  .hero-meta .line-label { white-space: normal; }
+  .ticker { flex-wrap: wrap; justify-content: center; gap: 6px 0; margin: 20px 0 32px; padding: 12px 16px; }
+  .ticker .rule { display: none; }
+  .ticker span { font-size: 13px; padding: 0 10px; }
+  .about-grid { padding: 16px 16px 40px; gap: 16px; }
+  .about-grid p { font-size: 22px; }
+  .flow-grid { padding: 0 16px 40px; gap: 16px; }
+  .flow-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .flow-grid h2 { font-size: clamp(26px, 9vw, 34px); overflow-wrap: break-word; }
+  .flow-row { grid-template-columns: 44px 1fr; gap: 4px 12px; padding: 16px 0; }
+  .flow-row .b { grid-column: 2; }
+  .cta-band { margin: 0 16px 16px; padding: 32px 20px; gap: 20px; flex-direction: column; align-items: stretch; }
+  .cta-band .headline { font-size: 28px; }
+  .cta-band .right { align-items: stretch; }
+
+  /* Shared screen layout */
+  .screen-narrow, .screen-wide, .screen-report { max-width: calc(100% - 32px); padding: 20px 0; }
+  .screen-title { font-size: 30px !important; }
+  .card { padding: 16px !important; }
+  .btn-row { flex-direction: column; align-items: stretch; }
+  .btn-row .btn { width: 100%; }
+  /* 16px stops iOS Safari from zooming in when a field is focused */
+  .input, .search-pill input { font-size: 16px; }
+
+  /* Problem input */
+  .dropzone { padding: 24px 16px; }
+  .image-chip { flex-wrap: wrap; }
+  .image-chip .thumb { width: 96px; height: 72px; }
+
+  /* Q&A */
+  .qa-head-row { flex-wrap: wrap; gap: 4px 12px; }
+  .qa-count { font-size: 15px; }
+  .qa-question { font-size: 21px; }
+  .qa-log .q { max-width: 92%; }
+  .chip-row .btn { white-space: normal; text-align: left; }
+  .answer-row { flex-wrap: wrap; }
+  .answer-row .or { width: 100%; }
+  .answer-row .input { flex: 1 1 100%; }
+  .answer-row .btn { flex: 1; }
+
+  /* Analyzing */
+  .scanbar { width: min(340px, 80vw); }
+  .analyzing .word { font-size: 26px; }
+
+  /* Results */
+  .results-head { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .defect-name { font-size: 28px; }
+  .defect-card .head-row { flex-wrap: wrap; gap: 6px; }
+  .plan-row { grid-template-columns: 32px 22px 1fr; align-items: start; }
+
+  /* Report */
+  .report-head { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .report-head h2 { font-size: clamp(22px, 7vw, 34px); overflow-wrap: break-word; }
+  .report-sec { overflow-x: auto; }
+
+  /* Case history */
+  .history-head { flex-direction: column; align-items: stretch; }
+  .search-pill { width: 100%; }
+  /* Each case becomes a stacked card instead of a 6-column table */
+  .history-table { min-width: 0; display: block; }
+  .history-table thead { display: none; }
+  .history-table tbody { display: flex; flex-direction: column; gap: 12px; }
+  .history-table tr {
+    display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; padding: 14px;
+    background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px;
   }
-  
-  /* Grids and Layouts */
-  .results-grid, 
-  .about-grid, 
-  .flow-grid, 
-  .flow-cells, 
-  .report-2col, 
-  .confirm-grid,
-  .vision-body,
-  .report-photo-body {
-    grid-template-columns: 1fr !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 16px !important;
-  }
-  
-  /* CTA Band */
-  .cta-band {
-    flex-direction: column !important;
-    text-align: left !important;
-    align-items: flex-start !important;
-  }
-  
-  .cta-band .right {
-    flex-direction: column !important;
-    width: 100%;
-    align-items: stretch;
-  }
-  
-  .cta-band .right .btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  /* Button Rows */
-  .btn-row {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-  }
-  
-  .btn-row .btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  /* Input/QA area */
-  .chip-row {
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-  
-  .answer-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .answer-row .or {
-    text-align: center;
-    margin: 8px 0;
-  }
-  
-  /* Dropzone */
-  .dropzone {
-    padding: 24px 16px;
-  }
-  
-  /* Causes and Plans */
-  .cause-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-  
-  .cause-row .pct {
-    align-self: flex-end;
-    margin-top: -30px;
-  }
-  
-  .cause-bar {
-    width: 100%;
-  }
-  
-  .cause-evidence {
-    flex-direction: column;
-  }
-  
-  .plan-row {
-    align-items: flex-start;
-  }
-  
-  .plan-row .n,
-  .plan-row .check {
-    margin-top: 4px;
-  }
-  
-  /* Quality Score */
-  .quality-row {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 4px;
-  }
-  
-  /* History Table */
-  .history-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-  }
-  
-  .history-table {
-    min-width: 600px;
-  }
-  
-  /* Report Specific */
-  .report-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
-  }
-  
-  .report-head .date {
-    align-self: flex-start;
-  }
-  
-  .report-qa-row {
-    flex-direction: column;
-    gap: 4px;
-  }
-  
-  /* Cards */
-  .card {
-    padding: 20px !important;
+  .history-table tbody tr:hover { background: var(--bg-surface); }
+  .history-table td { display: block; padding: 0; border: none; }
+  .history-table td:first-child br { display: none; }
+  .history-table td:first-child .tag { margin-left: 6px; }
+  .history-table td.date { text-align: right; }
+  .history-table td.defect { grid-column: 1 / -1; font-family: var(--font-heading); font-weight: 600; font-size: 16px; }
+  .history-table td[data-label] { grid-column: 1 / -1; }
+  .history-table td[data-label]::before {
+    content: attr(data-label); display: block; margin-bottom: 2px;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-secondary);
   }
 }
 
-/* Extra small devices */
 @media (max-width: 480px) {
-  .hero-title {
-    font-size: clamp(28px, 12vw, 36px) !important;
-  }
-  
-  .card {
-    padding: 16px !important;
-  }
-  
-  .nav-steps {
-    flex-direction: column;
-    align-items: stretch;
-  }
+  .report-qa-row { grid-template-columns: 1fr; gap: 2px; }
+  .report-qa-row .a { text-align: left; }
+  .report-2col { grid-template-columns: 1fr; }
 }
 
-
-
-@media (max-width: 768px) {
-  .table, .history-table {
-    display: block !important;
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    width: 100% !important;
-    border: 0;
-  }
+/* Very narrow phones: show only the current step's label */
+@media (max-width: 400px) {
+  .step-pill:not(.current) .lbl { display: none; }
+  .brand { font-size: 18px; }
+  .history-link { padding: 6px 10px; }
 }
 
+@media (max-width: 480px) {
+  .topbar-links { gap: 6px; }
+  .history-link { font-size: 12px; padding: 6px 10px; }
+  .history-link .dot, .history-link svg { display: none; }
+}

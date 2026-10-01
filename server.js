@@ -12,11 +12,19 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 8080;
 const app = express();
 
-// Serves index.html, styles.css, app.js and assets straight from this folder.
-app.use(express.static(__dirname));
+// Serve ONLY the frontend. The project root also holds server code, the prompt,
+// SQL and node_modules, so it must never be exposed with express.static(__dirname).
+const PUBLIC_FILES = ['index.html', 'styles.css', 'app.js'];
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+for (const file of PUBLIC_FILES) {
+  app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
+}
+app.use('/assets', express.static(path.join(__dirname, 'assets')));
 
-// Allows the server to accept the base64 image strings from the frontend
-app.use(express.json({ limit: '10mb' }));
+// Accepts the base64 photo from the frontend. The browser downscales photos to
+// ≤1600px JPEG (well under 2 MB as base64), so 5 MB leaves headroom without
+// letting a single request carry an arbitrarily large payload.
+app.use(express.json({ limit: '5mb' }));
 
 // Each request costs a real Gemini embedding + generation call, so cap how often
 // one client can hit this endpoint to avoid runaway API spend if the URL goes public.
