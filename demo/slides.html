@@ -1,0 +1,316 @@
+<title>DispenseIQ Slides</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600&display=swap">
+<style>
+  :root {
+    --bg: #f2f2f3;
+    --surface: #ffffff;
+    --ink: #1d1f20;
+    --muted: #7a7a7d;
+    --rule: color-mix(in srgb, #1d1f20 16%, transparent);
+    --accent: #597ea3;
+    --accent-deep: #2c455d;
+    --accent-tint: #eef6ff;
+    --amber: oklch(0.62 0.11 60);
+    --amber-tint: oklch(0.97 0.02 80);
+    --amber-text: oklch(0.42 0.1 60);
+    --head: "Barlow Condensed", "Arial Narrow", Impact, sans-serif;
+    --body: "Barlow", "Segoe UI", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: clamp(16px, 1.55vw, 24px);
+    line-height: 1.5;
+    overflow: hidden;
+  }
+  .deck { position: relative; width: 100%; height: 100%; }
+  .slide {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; justify-content: center;
+    padding-block: clamp(32px, 6vh, 80px);
+    padding-inline: clamp(20px, 7vw, 120px);
+    opacity: 0; visibility: hidden;
+    transition: opacity 260ms ease;
+  }
+  .slide.on { opacity: 1; visibility: visible; }
+  @media (prefers-reduced-motion: reduce) { .slide { transition: none; } }
+
+  .eyebrow {
+    font-size: clamp(12px, 1.1vw, 16px); letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 500;
+    display: flex; gap: 0.8em; align-items: baseline;
+  }
+  .eyebrow .n { font-family: var(--head); font-weight: 600; font-size: 1.25em; letter-spacing: 0.06em; }
+  h1 {
+    font-family: var(--head); font-weight: 600; text-transform: uppercase;
+    font-size: clamp(40px, 6vw, 92px); line-height: 0.98; letter-spacing: 0.01em;
+    margin: 0.2em 0 0; text-wrap: balance;
+    padding-bottom: 0.35em; border-bottom: 1px solid var(--rule);
+  }
+  .lede { max-width: 32em; margin: 1em 0 0; color: var(--muted); }
+
+  /* fact grid: label / value pairs, no cards */
+  .facts {
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(20px, 3vh, 40px) clamp(24px, 4vw, 72px);
+    margin-top: clamp(24px, 4vh, 48px);
+  }
+  .fact { display: flex; flex-direction: column; gap: 0.25em; border-top: 1px solid var(--rule); padding-top: 0.6em; }
+  .fact b { font-family: var(--head); font-weight: 600; font-size: 1.55em; line-height: 1.05; letter-spacing: 0.01em; }
+  .fact span { color: var(--muted); max-width: 26em; }
+  .fact code { font-family: ui-monospace, Consolas, monospace; font-size: 0.9em; color: var(--ink); background: var(--surface); padding: 0.05em 0.35em; border: 1px solid var(--rule); border-radius: 4px; }
+
+  /* results tiles */
+  .tiles {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(12px, 1.6vw, 24px);
+    margin-top: clamp(24px, 4vh, 48px);
+  }
+  .tile {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 14px;
+    padding: clamp(14px, 2vh, 26px) clamp(14px, 1.6vw, 26px);
+    display: flex; flex-direction: column; gap: 0.35em; min-width: 0;
+  }
+  .tile .num {
+    font-family: var(--head); font-weight: 600; color: var(--accent-deep);
+    font-size: clamp(44px, 5.6vw, 96px); line-height: 0.95; letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .tile .num small { font-size: 0.42em; color: var(--accent); letter-spacing: 0.02em; margin-left: 0.15em; }
+  .tile .lbl { color: var(--muted); font-size: 0.85em; line-height: 1.35; }
+
+  .delta {
+    margin-top: clamp(20px, 3.5vh, 40px);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 0.6em 1.4em;
+    border-top: 1px solid var(--rule); padding-top: 1em;
+  }
+  .delta .k { font-size: 0.8em; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .delta .pair { font-family: var(--head); font-weight: 600; font-size: 1.6em; line-height: 1; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 0.35em; }
+  .delta .pair .from { color: var(--muted); }
+  .delta .pair .arrow { color: var(--accent); font-family: var(--body); font-weight: 400; }
+  .delta .pair .to { color: var(--accent-deep); }
+  .foot { margin-top: clamp(24px, 4vh, 44px); font-size: 0.78em; color: var(--muted); font-variant-numeric: tabular-nums; max-width: 60em; }
+
+  /* found & fixed */
+  .cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(20px, 3vw, 56px); margin-top: clamp(24px, 4vh, 48px); }
+  .col { display: flex; flex-direction: column; gap: 0.6em; padding-top: 0.8em; border-top: 3px solid var(--rule); }
+  .col.fix { border-top-color: var(--amber); }
+  .col.miss { border-top-color: var(--accent); }
+  .col .tag { font-size: 0.78em; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+  .col.fix .tag { color: var(--amber-text); }
+  .col.miss .tag { color: var(--accent-deep); }
+  .col h2 { font-family: var(--head); font-weight: 600; font-size: 1.9em; line-height: 1.02; margin: 0; letter-spacing: 0.01em; }
+  .col p { margin: 0; max-width: 30em; }
+  .col .quote {
+    margin-top: 0.4em; padding: 0.7em 0.9em; border-radius: 10px; font-size: 0.92em;
+    background: var(--amber-tint); color: var(--amber-text); border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+  }
+  .col .mono { font-family: ui-monospace, Consolas, monospace; font-size: 0.88em; color: var(--ink); background: var(--surface); padding: 0.05em 0.35em; border: 1px solid var(--rule); border-radius: 4px; }
+  .num-inline { font-family: var(--head); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent-deep); }
+
+  /* conclusion */
+  .close h1 { border-bottom: none; padding-bottom: 0; font-size: clamp(44px, 7vw, 108px); max-width: 11em; }
+  .close h1 em { font-style: normal; color: var(--accent); }
+  .points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 3vw, 48px); margin-top: clamp(28px, 5vh, 56px); border-top: 1px solid var(--rule); padding-top: 1.2em; }
+  .points div { display: flex; flex-direction: column; gap: 0.2em; }
+  .points b { font-family: var(--head); font-weight: 600; font-size: 1.35em; line-height: 1.05; }
+  .points span { color: var(--muted); font-size: 0.92em; }
+  .motto { margin-top: clamp(28px, 5vh, 56px); display: flex; align-items: center; gap: 0.6em; color: var(--muted); font-size: 0.95em; }
+  .motto i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+
+  /* built with */
+  .groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(16px, 3vw, 48px); margin-top: clamp(24px, 4vh, 48px); }
+  .group { border-top: 1px solid var(--rule); padding-top: 0.8em; }
+  .group h2 { font-family: var(--head); font-weight: 600; font-size: 1.4em; margin: 0 0 0.4em; letter-spacing: 0.02em; text-transform: uppercase; }
+  .group.ours h2 { color: var(--accent-deep); }
+  .group ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3em; font-size: 0.92em; }
+  .group li span { color: var(--muted); }
+  .group.ours { background: var(--accent-tint); border-top-color: var(--accent); padding: 0.8em 1em 1em; border-radius: 12px; }
+
+  .brand {
+    position: fixed; left: clamp(20px, 7vw, 120px); bottom: clamp(16px, 3vh, 32px);
+    font-family: var(--head); font-weight: 600; letter-spacing: 0.04em; font-size: 0.95em;
+    display: flex; align-items: center; gap: 0.5em; color: var(--ink);
+  }
+  .brand .iq { color: var(--accent); }
+  .hud {
+    position: fixed; right: clamp(20px, 7vw, 120px); bottom: clamp(16px, 3vh, 32px);
+    font-size: 0.8em; color: var(--muted); font-variant-numeric: tabular-nums;
+    display: flex; gap: 1.2em; align-items: center;
+  }
+  .hud kbd { font-family: inherit; border: 1px solid var(--rule); border-radius: 5px; padding: 0 0.4em; background: var(--surface); }
+  .hud .hint { opacity: 0.85; }
+  body.recording .hud .hint { display: none; }
+  button.nav { position: fixed; inset: 0; width: 50%; height: 100%; background: transparent; border: 0; padding: 0; cursor: pointer; opacity: 0; }
+  button.nav.next { left: auto; right: 0; }
+  button.nav:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: -6px; background: transparent; }
+
+  @media (max-width: 760px) {
+    body { overflow: auto; font-size: 16px; }
+    .slide { position: relative; opacity: 1; visibility: visible; min-height: 100svh; }
+    .facts, .cols, .tiles, .points, .groups { grid-template-columns: 1fr; }
+    .brand, .hud, button.nav { display: none; }
+  }
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · How we tested -->
+  <section class="slide on" aria-label="How we tested">
+    <div class="eyebrow"><span class="n">05</span><span>Testing &amp; Validation</span></div>
+    <h1>How we tested it</h1>
+    <div class="facts">
+      <div class="fact">
+        <b>18 labelled cases</b>
+        <span>One for each defect type in the knowledge base, written in operator language — deliberately not the stored wording, so it tests understanding, not memory.</span>
+      </div>
+      <div class="fact">
+        <b>3 problems that aren't dispensing</b>
+        <span>A hand-soldering fault, a pick-and-place rotation error, a conveyor fault. The correct answer is to flag them, not force a match.</span>
+      </div>
+      <div class="fact">
+        <b>3 test photos</b>
+        <span>Synthetic dot panels with planted defects — missing, oversized, undersized — graded on whether each planted defect is named.</span>
+      </div>
+      <div class="fact">
+        <b>Same code as the app</b>
+        <span><code>npm run eval</code> calls the exact pipeline the server runs — embedding, vector search, Gemini — nothing mocked. Results are written to a file with every case.</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · Results -->
+  <section class="slide" aria-label="Results">
+    <div class="eyebrow"><span class="n">05</span><span>Testing &amp; Validation</span></div>
+    <h1>What we measured</h1>
+    <div class="tiles">
+      <div class="tile">
+        <div class="num">91<small>%</small></div>
+        <div class="lbl">10 of 11 in-scope cases diagnosed correctly (top-1 defect)</div>
+      </div>
+      <div class="tile">
+        <div class="num">2<small>/ 2</small></div>
+        <div class="lbl">out-of-scope problems flagged low-confidence instead of force-fitted</div>
+      </div>
+      <div class="tile">
+        <div class="num">4.9<small>vs 1.0</small></div>
+        <div class="lbl">mean confidence out of 5 — real dispensing defects vs. non-dispensing problems</div>
+      </div>
+      <div class="tile">
+        <div class="num">5<small>/ 5</small></div>
+        <div class="lbl">planted photo defects found, with position and severity</div>
+      </div>
+    </div>
+    <div class="delta">
+      <span class="k">Knowledge base expanded 6 → 12 cases</span>
+      <span class="pair"><span class="from">0 / 6</span><span class="arrow">→</span><span class="to">6 / 6</span></span>
+      <span class="k">closest stored case is the correct defect type, on the six new defect types</span>
+    </div>
+    <div class="foot">Latest pass: 15 of 18 cases run (API quota). Mean retrieval similarity 0.82 in-scope vs 0.74 out-of-scope; low-confidence threshold 0.70. Full table in eval/results.</div>
+  </section>
+
+  <!-- 3 · Found & fixed -->
+  <section class="slide" aria-label="What testing found">
+    <div class="eyebrow"><span class="n">05</span><span>Testing &amp; Validation</span></div>
+    <h1>What testing found</h1>
+    <div class="cols">
+      <div class="col fix">
+        <span class="tag">Bug found · fixed</span>
+        <h2>The similarity guardrail alone wasn't enough</h2>
+        <p>A soldering fault described in text scored <span class="num-inline">0.73</span> similarity to our cases — above the <span class="num-inline">0.70</span> threshold — so the retrieval check stayed silent and the result looked confident.</p>
+        <p><strong>Fix:</strong> the model's own confidence is now a second, independent signal. Either one raises the warning.</p>
+        <div class="quote">“This may not be a dispensing defect we have on record.”</div>
+        <p><span class="mono">Result: 2 / 2 out-of-scope cases flagged</span></p>
+      </div>
+      <div class="col miss">
+        <span class="tag">Known limitation</span>
+        <h2>One honest miss</h2>
+        <p>“Every so often a pad gets nothing at all” was diagnosed as <strong>Inconsistent Dispensing Volume</strong> (confidence 4) instead of <strong>Missing Dispensing Dots</strong>.</p>
+        <p>The correct case <em>was</em> retrieved as the top match. The model over-weighted “intermittent” against “nothing at all.”</p>
+        <p>Logged in the results file as a limitation — not hidden.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Conclusion -->
+  <section class="slide close" aria-label="Conclusion">
+    <div class="eyebrow"><span>In closing</span></div>
+    <h1>Faster to the right check. <em>Learns from what the engineer finds.</em></h1>
+    <div class="points">
+      <div><b>A working system, not a mock-up</b><span>Live AI, a real knowledge base, tested against labelled cases.</span></div>
+      <div><b>Reasoning you can audit</b><span>Every cause shows the evidence behind it, in the operator's own words.</span></div>
+      <div><b>Grows with use</b><span>Each confirmed diagnosis becomes a case the next technician benefits from.</span></div>
+    </div>
+    <div class="motto"><i></i>Assists engineers — does not replace them.</div>
+  </section>
+
+  <!-- 5 · Built with -->
+  <section class="slide" aria-label="Third-party technologies">
+    <div class="eyebrow"><span>Third-party technologies · declared</span></div>
+    <h1>Built with</h1>
+    <div class="groups">
+      <div class="group">
+        <h2>Services</h2>
+        <ul>
+          <li>Google Gemini API <span>— gemini-3.6-flash, gemini-embedding-001</span></li>
+          <li>Supabase <span>— Postgres + pgvector, row-level security</span></li>
+          <li>Google Fonts <span>— Barlow, Barlow Condensed</span></li>
+        </ul>
+      </div>
+      <div class="group">
+        <h2>Open source</h2>
+        <ul>
+          <li>Node.js, Express <span>— backend</span></li>
+          <li>@google/genai, @supabase/supabase-js <span>— SDKs</span></li>
+          <li>express-rate-limit, dotenv</li>
+          <li>Playwright <span>— UI testing only</span></li>
+        </ul>
+      </div>
+      <div class="group ours">
+        <h2>Our own work</h2>
+        <ul>
+          <li>Diagnostic flow, questions and dynamic follow-up</li>
+          <li>Prompt, typed output schema, evidence &amp; confidence logic</li>
+          <li>Knowledge-base design, seed cases, learning loop</li>
+          <li>Target sheet, evaluation set and harness</li>
+          <li>Interface, report and case history</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="brand"><span>Dispense<span class="iq">IQ</span></span></div>
+<div class="hud"><span class="hint"><kbd>←</kbd> <kbd>→</kbd> to advance · <kbd>R</kbd> hides this</span><span id="counter">1 / 5</span></div>
+<button class="nav prev" type="button" aria-label="Previous slide"></button>
+<button class="nav next" type="button" aria-label="Next slide"></button>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const counter = document.getElementById('counter');
+  let i = Math.min(Math.max((parseInt(location.hash.slice(1), 10) || 1) - 1, 0), slides.length - 1);
+
+  function show(n) {
+    i = Math.min(Math.max(n, 0), slides.length - 1);
+    slides.forEach((s, k) => s.classList.toggle('on', k === i));
+    counter.textContent = `${i + 1} / ${slides.length}`;
+    history.replaceState(null, '', `#${i + 1}`);
+  }
+  show(i);
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+    else if (e.key === 'Home') show(0);
+    else if (e.key === 'End') show(slides.length - 1);
+    else if (e.key === 'r' || e.key === 'R') document.body.classList.toggle('recording');
+  });
+  document.querySelector('.nav.next').addEventListener('click', () => show(i + 1));
+  document.querySelector('.nav.prev').addEventListener('click', () => show(i - 1));
+  window.addEventListener('hashchange', () => show((parseInt(location.hash.slice(1), 10) || 1) - 1));
+</script>
