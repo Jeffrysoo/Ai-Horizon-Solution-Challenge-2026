@@ -20,22 +20,22 @@ const publicDir = path.join(rootDir, 'public');
 
 // Dynamically check if static files are inside a 'public' folder or the root folder
 if (fs.existsSync(path.join(publicDir, 'app.js')) || fs.existsSync(path.join(publicDir, 'styles.css'))) {
-    app.use(express.static(publicDir));
+  app.use(express.static(publicDir));
 } else {
-    app.use(express.static(rootDir));
+  app.use(express.static(rootDir));
 }
 
 // Explicit fallback for the root route to serve index.html
 app.get('/', (req, res) => {
-    const indexPath = fs.existsSync(path.join(publicDir, 'index.html')) 
-        ? path.join(publicDir, 'index.html') 
-        : path.join(rootDir, 'index.html');
-    
-    if (fs.existsSync(indexPath)) {
-        res.sendFile(indexPath);
-    } else {
-        res.status(404).send('index.html not found');
-    }
+  const indexPath = fs.existsSync(path.join(publicDir, 'index.html'))
+    ? path.join(publicDir, 'index.html')
+    : path.join(rootDir, 'index.html');
+
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('index.html not found');
+  }
 });
 
 // Accepts the base64 photo from the frontend. The browser downscales photos to
@@ -109,7 +109,7 @@ app.get('/api/cases', async (req, res) => {
 if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 8080;
   app.listen(PORT, () => {
-    console.log(`DispenseIQ server running locally on port ${PORT}`);
+    console.log(`DispenseIQ server running at http://localhost:${PORT}`);
   });
 }
 
