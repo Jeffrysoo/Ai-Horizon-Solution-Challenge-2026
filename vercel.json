@@ -3,34 +3,13 @@
   "builds": [
     {
       "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "index.html",
-          "app.js",
-          "styles.css",
-          "public/**",
-          "assets/**"
-        ]
-      }
+      "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(app\\.js|styles\\.css|favicon\\.ico)",
-      "dest": "/$1"
-    },
-    {
-      "src": "/(assets/.*|public/.*)",
-      "dest": "/$1"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/server.js"
+      "source": "/(.*)",
+      "destination": "/server.js"
     }
   ]
 }

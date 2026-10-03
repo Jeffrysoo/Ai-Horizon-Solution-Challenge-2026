@@ -13,22 +13,29 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 8080;
 const app = express();
 
-// Use process.cwd() so paths resolve reliably across both local development and Vercel's /var/task
+// Vercel serverless environments execute from /var/task. 
+// process.cwd() ensures we look at the actual project deployment root.
 const rootDir = process.cwd();
+const publicDir = path.join(rootDir, 'public');
 
-// Serve static assets from both project root and public folder if present
-app.use(express.static(rootDir));
-app.use('/assets', express.static(path.join(rootDir, 'assets')));
-if (fs.existsSync(path.join(rootDir, 'public'))) {
-  app.use(express.static(path.join(rootDir, 'public')));
+// Dynamically check if static files are inside a 'public' folder or the root folder
+if (fs.existsSync(path.join(publicDir, 'app.js')) || fs.existsSync(path.join(publicDir, 'styles.css'))) {
+    app.use(express.static(publicDir));
+} else {
+    app.use(express.static(rootDir));
 }
 
-// Fallback index.html route for SPA navigation
+// Explicit fallback for the root route to serve index.html
 app.get('/', (req, res) => {
-  const indexPath = fs.existsSync(path.join(rootDir, 'index.html'))
-    ? path.join(rootDir, 'index.html')
-    : path.join(rootDir, 'public', 'index.html');
-  res.sendFile(indexPath);
+    const indexPath = fs.existsSync(path.join(publicDir, 'index.html')) 
+        ? path.join(publicDir, 'index.html') 
+        : path.join(rootDir, 'index.html');
+    
+    if (fs.existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.status(404).send('index.html not found');
+    }
 });
 
 // Accepts the base64 photo from the frontend. The browser downscales photos to
