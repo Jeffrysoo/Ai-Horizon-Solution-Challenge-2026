@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import 'dotenv/config';
 import rateLimit from 'express-rate-limit';
 import { analyzeProblem, listCases, confirmCase } from './lib/analyze.js';
@@ -12,14 +13,30 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 8080;
 const app = express();
 
-// Serve ONLY the frontend. The project root also holds server code, the prompt,
-// SQL and node_modules, so it must never be exposed with express.static(__dirname).
-const PUBLIC_FILES = ['index.html', 'styles.css', 'app.js'];
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-for (const file of PUBLIC_FILES) {
-  app.get(`/${file}`, (req, res) => res.sendFile(path.join(__dirname, file)));
+// Vercel serverless environments execute from /var/task. 
+// process.cwd() ensures we look at the actual project deployment root.
+const rootDir = process.cwd();
+const publicDir = path.join(rootDir, 'public');
+
+// Dynamically check if static files are inside a 'public' folder or the root folder
+if (fs.existsSync(path.join(publicDir, 'app.js')) || fs.existsSync(path.join(publicDir, 'styles.css'))) {
+  app.use(express.static(publicDir));
+} else {
+  app.use(express.static(rootDir));
 }
-app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// Explicit fallback for the root route to serve index.html
+app.get('/', (req, res) => {
+  const indexPath = fs.existsSync(path.join(publicDir, 'index.html'))
+    ? path.join(publicDir, 'index.html')
+    : path.join(rootDir, 'index.html');
+
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('index.html not found');
+  }
+});
 
 // Accepts the base64 photo from the frontend. The browser downscales photos to
 // ≤1600px JPEG (well under 2 MB as base64), so 5 MB leaves headroom without
@@ -88,7 +105,12 @@ app.get('/api/cases', async (req, res) => {
   }
 });
 
-// --- START SERVER ---
-app.listen(PORT, () => {
-  console.log(`DispenseIQ Engine online at http://localhost:${PORT}`);
-});
+// Only listen when running standalone in local development
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`DispenseIQ server running at http://localhost:${PORT}`);
+  });
+}
+
+export default app;
